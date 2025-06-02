@@ -54,46 +54,40 @@ std::pair<int,int> encontrarAlvosMaisProximo(int x,int y,
                 minDistance = distance;
                 nearestIndex = i;
             }
-        
         }
-        
     }    
     return{nearestIndex, minDistance};
 }           
 
 bool estaOcupado(int x, int y, const std::vector<Cell>& celulas,const std::vector<Cell>& cC, 
-    const std::vector<Obstacle>& obstaculos,int verificacC) 
+const std::vector<Obstacle>& obstaculos,int verificacC) 
+{
+    for (const auto& celula : celulas) 
     {
-        
-        // inicia a verificão se o ponto está ocupado por outra célula de proteção
-        
-        for (const auto& celula : celulas) 
-        {
         if (celula.getCoordenadaX() == x && celula.getCoordenadaY() == y) 
-            {
-                return true;
-            }
-        }
-        if(verificacC == 1)
         {
-            for (const auto& c_celula : cC) 
-            {
-            if (c_celula.getCoordenadaX() == x && c_celula.getCoordenadaY() == y) 
-                {
-                    return true;
-                }
-            }
-        }   
-        // inicia a verificão se o ponto está ocupado por um obstaculo
-        for (const auto& obstaculo : obstaculos) 
-        {
-            if (obstaculo.getCoordenadaX() == x && obstaculo.getCoordenadaY() == y) 
-            {
-                return true;
-            }
+            return true;
         }
-            return false;
     }
+    if(verificacC == 1)
+    {
+        for (const auto& c_celula : cC) 
+        {
+            if (c_celula.getCoordenadaX() == x && c_celula.getCoordenadaY() == y) 
+            {
+                return true;
+            }
+        }
+    }   
+    for (const auto& obstaculo : obstaculos) 
+    {
+        if (obstaculo.getCoordenadaX() == x && obstaculo.getCoordenadaY() == y) 
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
 void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
     std::vector<Cell>& celulas, std::vector<Cell>& cC, std::vector<Obstacle>& obstaculos,
@@ -123,17 +117,25 @@ void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
                     {
                         // Perseguir: mover na direção que diminua a diferença de y
                         if (y < targetY)
+                        {
                             direcoesPossiveis.push_back(NORTH); // aumenta y
+                        }
                         else
-                            direcoesPossiveis.push_back(SOUTH); // diminui y
+                        {    
+                        direcoesPossiveis.push_back(SOUTH); // diminui y
+                        }
                     }
                     else
                     {
                         // Fugir: evitar o movimento que aproxima (o contrário do que reduziria a diferença)
                         if (y < targetY)
+                        {
                             direcoesPossiveis = {EAST, WEST, SOUTH}; // NÃO usar NORTH
+                        }
                         else
-                            direcoesPossiveis = {EAST, WEST, NORTH}; // NÃO usar SOUTH
+                        {
+                        direcoesPossiveis = {EAST, WEST, NORTH}; // NÃO usar SOUTH
+                        }
                     }
                 }
                 else if (y == targetY) // Mesma linha: o movimento será horizontal
@@ -141,16 +143,24 @@ void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
                     if (isPursuing)
                     {
                         if (x < targetX)
+                        {
                             direcoesPossiveis.push_back(EAST); // aumenta x
+                        }
                         else
+                        {
                             direcoesPossiveis.push_back(WEST); // diminui x
+                        }
                     }
                     else
                     {
                         if (x < targetX)
+                        {
                             direcoesPossiveis = {NORTH, SOUTH, WEST}; // NÃO usar EAST
+                        }
                         else
+                        {
                             direcoesPossiveis = {NORTH, SOUTH, EAST}; // NÃO usar WEST
+                        }
                     }
                 }
                 // Seleciona uma direção dentre as possíveis
@@ -168,25 +178,41 @@ void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
                 {
                     // Permite apenas os movimentos que aproximam: direções que diminuem |dx| ou |dy|
                     if (dx > 0)
+                    {
                         direcoesPossiveis.push_back(EAST);
-                    else if (dx < 0)
+                    }
+                    else
+                    {
                         direcoesPossiveis.push_back(WEST);
+                    }
                     if (dy > 0)
+                    {
                         direcoesPossiveis.push_back(NORTH);
-                    else if (dy < 0)
+                    }
+                    else
+                    {
                         direcoesPossiveis.push_back(SOUTH);
+                    }       
                 }
                 else
                 {
                     // Fugir: inverte os sinais para aumentar a distância
                     if (dx > 0)
+                    {
                         direcoesPossiveis.push_back(WEST);
-                    else if (dx < 0)
+                    }
+                    else 
+                    {
                         direcoesPossiveis.push_back(EAST);
+                    }
                     if (dy > 0)
+                    {
                         direcoesPossiveis.push_back(SOUTH);
-                    else if (dy < 0)
+                    }
+                    else
+                    {
                         direcoesPossiveis.push_back(NORTH);
+                    }
                 }
                 // Como estamos na diagonal, geralmente teremos duas direções
                 std::uniform_int_distribution<int> dist(0, direcoesPossiveis.size()-1);
@@ -212,7 +238,6 @@ void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
             attemptCount++;
         }
     }
-
     x = prevX;
     y = prevY;
 }
@@ -256,8 +281,6 @@ void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
         
         if (nearestCTIndex != -1 and distanciaAteCancer <= SEARCHRADIUS)
         {
-            // Achou alvo próximo
-    
             isPursiung = false;
             std:: bernoulli_distribution d(CCPROBABILITY);
             randomValue = d(rng) ? 1: 0 ;
@@ -344,7 +367,8 @@ bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas
         } else {
             // Se num_pontos for 0, criar obstáculos aleatoriamente
             int tentativas_pontos = 0;
-            while (tentativas_pontos < max_tentativas && pontos.size() < num_pontos) {
+            while (tentativas_pontos < max_tentativas && pontos.size() < num_pontos) 
+            {
                 std::uniform_int_distribution<int> distribX(0, largura_max - 1);
                 int x = distribX(rng);
                 std::uniform_int_distribution<int> distribY(0, altura_max - 1);
@@ -355,7 +379,8 @@ bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas
         }
         // Posicionar células
         int tentativas_celulas = 0;
-        while (tentativas_celulas < max_tentativas && celulas.size() < num_celulas) {
+        while (tentativas_celulas < max_tentativas && celulas.size() < num_celulas) 
+        {
             std::uniform_int_distribution<int> distribX(0, largura_max - 1);
             int x = distribX(rng);
             std::uniform_int_distribution<int> distribY(0, altura_max - 1);
@@ -363,10 +388,12 @@ bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas
             int novo_id = celulas.size() + 1;
             Cell nova_celula = {"N", novo_id, x, y};
     
-            if (!verificaSobreposicaoGeral(nova_celula, pontos, celulas,cancers)) {
+            if (!verificaSobreposicaoGeral(nova_celula, pontos, celulas,cancers)) 
+            {
                 celulas.push_back(nova_celula);
                 tentativas_celulas = 0;
-            } else {
+            } else 
+            {
                 tentativas_celulas++;
             }
         }
@@ -382,10 +409,12 @@ bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas
             int novo_id = cancers.size() + 1;
             Cell nova_cancer = {"O", novo_id, x, y};
     
-            if (!verificaSobreposicaoGeral(nova_cancer, pontos, celulas, cancers)) {
+            if (!verificaSobreposicaoGeral(nova_cancer, pontos, celulas, cancers)) 
+            {
                 cancers.push_back(nova_cancer);
                 tentativas_cancers = 0;
-            } else {
+            } else 
+            {
                 tentativas_cancers++;
             }
         }
@@ -402,50 +431,8 @@ bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas
     }
 
 
-void writeToFile(const std::string& fileName, const std::vector<Cell>&a,
-const std::vector<Cell>&d,const std::vector<Obstacle>&b, int timeStep) 
-{
-    // Abre o arquivo em modo de escrita e apêndice
-    std::ofstream file(fileName, std::ios::app);
-
-    // Verifica se o arquivo foi aberto corretamente
-    if (!file.is_open()) 
-    {
-        logError("Erro ao abrir o arquivo " + fileName);
-        return;
-    }
-    // Write the total number of entries (sum of sizes of all vectors)
-    file << a.size()+b.size() +d.size() << '\n';
-    // Write the header indicating the timestep
-    file << "Atoms. Timestep: " << timeStep << '\n';
-
-    // Write information for each object in vector 'a'
-    for (const auto& teste: a) 
-    {
-        file << teste.getTipo() << ' '<< teste.getCoordenadaX() << ' ' 
-        << teste.getCoordenadaY() <<' '<< 0.0 <<' ' << "\n";
-    }
-
-    // Write information for each object in vector 'b'
-    for (const auto& teste: b) 
-    {
-        file << teste.getTipo() << ' '<< teste.getCoordenadaX() << ' ' 
-        << teste.getCoordenadaY() <<' '<< 0.0 <<' ' << "\n";
-    }
-    
-    // Write information for each object in vector 'd'
-    for (const auto& teste: d) 
-    {
-        file << teste.getTipo() << ' '<< teste.getCoordenadaX() << ' ' 
-        << teste.getCoordenadaY() <<' '<< 0.0 <<' ' << "\n";
-    }
-    
-    // Close the file
-    file.close();
-}
-
 int runSimulationPaper(const int NUMSTEPS, std::vector<Cell>& cT, 
-std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName, std::mt19937& rng, bool write = false) 
+std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng) 
 {
     int steps = 1; // Step counter
     bool isPursuing;
@@ -473,10 +460,6 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName
             moverCelulaRuim(cC[i], cT, cC, point, rng);
             }
         }
-        if (write == true)
-        {
-            writeToFile(fileName, cT,cC, point, steps);
-        }
         // Terminate if no cancer cells remain
         if (cC.empty()) 
         {
@@ -499,14 +482,14 @@ bool carregarObstaculos(std:: vector<Obstacle>& point, int numPoint, std:: strin
     std:: string filename = "obstacules_" + std::to_string(numPoint)+ ".txt";
     if (!fileExists(filename))
     {
-        std::cerr<< "Erro Arquivo " << filename << " não existe.\n";
+        logError("Erro ao abrir o arquivo " + filename + "nao existe");
         return false; 
     }
 
     std:: ifstream inputFile(filename);
     if (!inputFile.is_open())
     {
-        std:: cerr << "Erro: Não foi possível abrir o arquivo" << filename << "\n";
+        logError("Erro ao abrir o arquivo " + filename);
         return false; 
     }
     int id_counter = 1;
@@ -520,7 +503,7 @@ bool carregarObstaculos(std:: vector<Obstacle>& point, int numPoint, std:: strin
             Obstacle new_obstacle = {"C", id_counter ++, x,y};
             point.push_back(new_obstacle);
         }
-        
+       
     }
     inputFile.close();
     return true;    
@@ -528,24 +511,25 @@ bool carregarObstaculos(std:: vector<Obstacle>& point, int numPoint, std:: strin
 
 std::string gerarNomeArquivo(int numCT, int numcC, int numPoint,
     double ncNoise_cc, double ncNoise_ct,
-    int SR_value) {
-return "NC_" + std::to_string(numCT) +
-"_NE_" + std::to_string(numcC) +
-"_O_" + std::to_string(numPoint) +
-"_TCC_" + std::to_string(ncNoise_cc) +
-"_TCT_" + std::to_string(ncNoise_ct) +
-"_SR_" + std::to_string(SR_value) + ".dat";
-}
+    int SR_value) 
+    {   
+        return "NC_" + std::to_string(numCT) +
+        "_NE_" + std::to_string(numcC) +
+        "_O_" + std::to_string(numPoint) +
+        "_TCC_" + std::to_string(ncNoise_cc) +
+        "_TCT_" + std::to_string(ncNoise_ct) +
+        "_SR_" + std::to_string(SR_value) + ".dat";
+    }
 
 void executarRodadas(int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc, int SR_value,
-    const std::string& fileName, const std::vector<Obstacle>& point, bool write)
+    const std::string& fileName, const std::vector<Obstacle>& point)
 {
     std::ofstream outputFile(fileName);
     if (!outputFile.is_open()) 
     {
-    logError("Erro ao abrir o arquivo " + fileName);
-    return;
+        logError("Erro ao abrir o arquivo " + fileName);
+        return;
     }
 
     outputFile << "run,steps,seed\n";
@@ -568,29 +552,12 @@ void executarRodadas(int count, int numCT, int numcC, int numPoint,
                                     continue;
                                 }
 
-        std::string trajectoryFileName;
-        if (write) 
-        {
-            trajectoryFileName= "Trajectory_NH_500_NE_" + std::to_string(numcC) + "_O_" +
-                                std::to_string(numPoint) + "_TCC_" +
-                                std::to_string(ncNoise_cc) + "_TCT_" +
-                                std::to_string(ncNoise_ct) + "_SR_" +
-                                std::to_string(SR_value) + "_Run_" + std::to_string(run) + ".xyz";
-        }
-
-        int steps_local = runSimulationPaper(10000, cT_local, cC_local, point_local,
-                                         trajectoryFileName, rng_local, write);
+        int steps_local = runSimulationPaper(10000, cT_local, cC_local, point_local, rng_local);
 
         #pragma omp critical
         {
             outputFile << run << "," << steps_local << "," << seed_run << "\n";
             
-
-            /*
-            logInfo("Execução " + std::to_string(run)+
-                    ", Número de pasos: " + std::to_string(steps_local)+
-                    ", Número da seed " + std::to_string(seed_run));
-            */
         }
     }
     outputFile.close();
@@ -603,14 +570,10 @@ int main()
     bool write;
 
     std::vector<int> numcC_values = {1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 500, 1000};
-    //std::vector<int> numcC_values = {1000};
     std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};
-    //std::vector<int> numPoint_values = {0};
-    //std::vector<int> SR_values = {5, 10, 20, 30, 40, 50};
     std::vector<double> numNoise_ct = {0.95};
     std::vector<double> numNoise_cc = {0.95};
 
-    write = false;
     std::vector<Cell> cT;
     std::vector<Cell> cC;
     std::vector<Obstacle> point;
@@ -644,7 +607,7 @@ int main()
                         continue; // Se não carregar, pula para o próximo
                     }
                     std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, SR_value);
-                    executarRodadas(count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, SR_value, fileName, point, write);
+                    executarRodadas(count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, SR_value, fileName, point);
                 }
             }
         }
