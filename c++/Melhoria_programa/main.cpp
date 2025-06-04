@@ -567,7 +567,6 @@ void executarRodadas(int count, int numCT, int numcC, int numPoint,
 int main() 
 {
     int count, steps, numCT, numcC, numPoint, SR_value, x, y;
-    bool write;
 
     std::vector<int> numcC_values = {1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 500, 1000};
     std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};

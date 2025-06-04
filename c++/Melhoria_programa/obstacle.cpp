@@ -10,18 +10,10 @@ Obstacle::Obstacle(const std::string& tipo, int numero, int coordenadaX, int coo
 }
 
 // Getters
-std::string Obstacle::getTipo() const {
-    return m_tipo;
-}
+std::string Obstacle::getTipo() const {return m_tipo;}
 
-int Obstacle::getNumero() const {
-    return m_numero;
-}
+int Obstacle::getNumero() const {return m_numero;}
 
-int Obstacle::getCoordenadaX() const {
-    return m_coordenadaX;
-}
+int Obstacle::getCoordenadaX() const {return m_coordenadaX;}
 
-int Obstacle::getCoordenadaY() const {
-    return m_coordenadaY;
-}
+int Obstacle::getCoordenadaY() const {return m_coordenadaY;}

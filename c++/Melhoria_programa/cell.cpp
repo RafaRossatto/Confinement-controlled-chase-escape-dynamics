@@ -36,3 +36,4 @@ void Cell::changePosition(int newX, int newY)
     m_coordenadaX = newX;
     m_coordenadaY = newY;
 }
+

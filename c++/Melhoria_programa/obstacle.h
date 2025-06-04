@@ -9,12 +9,12 @@ class Obstacle
 
     public:
     
-        Obstacle(const std::string& tipo, int numero, int coordenadaX, int coordenadaY);
+        Obstacle(const std::string& tipo, int id, int coordenadaX, int coordenadaY);
     
 
     // Getters
     std::string getTipo() const; 
-    int getNumero() const; 
+    int get() const; 
     int getCoordenadaX() const; 
     int getCoordenadaY() const; 
 };
