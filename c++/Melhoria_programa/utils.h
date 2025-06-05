@@ -6,19 +6,6 @@
 #include <iostream>
 #include <fstream>
 
-// Função para calcular distância considerando condições periódicas
-inline double calculeDistance(int x1, int y1, int x2, int y2) {
-    int dx = x2 - x1;
-    if (dx < 0) dx = -dx;
-    if (dx > WIDTH / 2) dx = WIDTH - dx;
-
-    int dy = y2 - y1;
-    if (dy < 0) dy = -dy;
-    if (dy > HEIGHT / 2) dy = HEIGHT - dy;
-
-    return dx + dy;
-}
-
 inline void logInfo(const std::string& mensagem) 
 {
     std::cout << "[INFO] " << mensagem << std::endl;

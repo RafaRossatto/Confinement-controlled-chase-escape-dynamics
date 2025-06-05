@@ -14,6 +14,7 @@ class CellLattice {
         CellLattice(int width_, int height_);
     
         bool loadObstacles(std::vector<Obstacle>& obstacles, int numObstacles, std::string& line) const;
+        static double calculateDistance(int x1, int y1, int x2, int y2);
     };
 
 #endif // CELL_LATTICE_H

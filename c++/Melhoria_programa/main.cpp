@@ -47,7 +47,7 @@ std::pair<int,int> encontrarAlvosMaisProximo(int x,int y,
         if (radius > searchRadius) break;
         for (int i = 0; i < alvos.size(); i++)
         {
-            int distance = calculeDistance (x,y, alvos[i].getCoordenadaX(),
+            int distance = CellLattice::calculateDistance(x,y, alvos[i].getCoordenadaX(),
                                            alvos[i].getCoordenadaY());
     
             if (distance <= radius and distance < minDistance)
