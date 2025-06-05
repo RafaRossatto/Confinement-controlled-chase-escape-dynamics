@@ -373,7 +373,6 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
     return steps;
 }
         
-
 void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc, int SR_value,
     const std::string& fileName, const std::vector<Obstacle>& point)
@@ -385,7 +384,6 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
         std::cin.get();
         return;
     }
-
     outputFile << "run,steps,seed\n";
 
     #pragma omp parallel for schedule(dynamic)
@@ -393,7 +391,6 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
     {
         unsigned int seed_run = GLOBAL_SEED + run + 1000 * numcC + 100000 * numPoint;
         std::mt19937 rng_local(seed_run);
-
         std::vector<Cell> cT_local;
         std::vector<Cell> cC_local;
         std::vector<Obstacle> point_local = point;
@@ -407,11 +404,9 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
                                 }
 
         int steps_local = runSimulationPaper(10000, cT_local, cC_local, point_local, rng_local);
-
         #pragma omp critical
         {
             outputFile << run << "," << steps_local << "," << seed_run << "\n";
-            
         }
     }
     outputFile.close();
