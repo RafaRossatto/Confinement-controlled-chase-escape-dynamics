@@ -243,7 +243,6 @@ void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
     y = prevY;
 }
 
-
 void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
                     std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
 {
@@ -311,7 +310,6 @@ void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
                     obstaculos, verificacC,
                     isPursiung, rng);
     }
-
     else
     {
         // Não achou o alvo
