@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 class Obstacle 
 {
@@ -14,7 +15,7 @@ class Obstacle
 
     // Getters
     std::string getTipo() const; 
-    int get() const; 
+    int getNumero() const; 
     int getCoordenadaX() const; 
     int getCoordenadaY() const; 
 };

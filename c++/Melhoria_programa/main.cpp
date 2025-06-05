@@ -2,6 +2,7 @@
 #include "cell.h"
 #include "config.h"
 #include "utils.h"
+#include "cell_lattice.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -472,6 +473,8 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
     }
     return steps;
 }
+
+/*
 bool carregarObstaculos(std:: vector<Obstacle>& point, int numPoint, std:: string& line)
 {
     if (numPoint == 0)
@@ -510,6 +513,7 @@ bool carregarObstaculos(std:: vector<Obstacle>& point, int numPoint, std:: strin
     inputFile.close();
     return true;    
 }
+*/
 
 std::string gerarNomeArquivo(int numCT, int numcC, int numPoint,
     double ncNoise_cc, double ncNoise_ct,
@@ -582,6 +586,9 @@ int main()
     std::vector<Obstacle> point;
     std::string line;
 
+
+    CellLattice lattice(WIDTH,HEIGHT);
+
     numCT = 500;
     count = 1e3;
     SR_value = 50;
@@ -604,13 +611,13 @@ int main()
                     cT.clear();
                     cC.clear();
                     point.clear();
-
-                    if (!carregarObstaculos(point, numPoint, line)) 
-                    {
-                        logError("Erro ao posicionar obstaculos ");
+                    
+                    if (!lattice.loadObstacles(point, numPoint, line)) {
+                        logError("Failed to load obstacles");
                         std::cin.get();
-                        continue;
+                        return 1;
                     }
+
                     std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, SR_value);
                     executarRodadas(count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, SR_value, fileName, point);
                 }

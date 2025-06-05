@@ -6,22 +6,14 @@
 #include "obstacle.h"
 
 class CellLattice {
-private:
-    int width;
-    int height;
-
-    // Armazena posições de obstáculos
-    std::vector<std::pair<int, int>> obstacles;
-
-public:
-    CellLattice(int width, int height);
-
-    int getWidth() const;
-    int getHeight() const;
-
-    void addObstacle(int x, int y);
-    bool isObstacle(int x, int y) const;
-    void clearObstacles();
-};
+    private:
+        int width;
+        int height;
+    
+    public:
+        CellLattice(int width_, int height_);
+    
+        bool loadObstacles(std::vector<Obstacle>& obstacles, int numObstacles, std::string& line) const;
+    };
 
 #endif // CELL_LATTICE_H
