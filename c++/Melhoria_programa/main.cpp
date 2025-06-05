@@ -243,30 +243,6 @@ void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
     y = prevY;
 }
 
-template<typename T, typename U>
-bool sobrepoeComLista(const T& novo, const std:: vector<U>& lista)
-{
-    for(const auto& item : lista)
-    {
-        if (novo.getCoordenadaX() == item.getCoordenadaX() and
-            novo.getCoordenadaY() == item.getCoordenadaY())
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-template <typename T>
-bool verificaSobreposicaoGeral (const T& novo,
-                                const std::vector<Obstacle>& pontos,
-                                const std::vector<Cell>& celulas,
-                                const std::vector<Cell>& cancers)
-{
-    return  sobrepoeComLista(novo,pontos) or
-            sobrepoeComLista(novo, celulas) or
-            sobrepoeComLista(novo, cancers);
-}
 
 void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
                     std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
@@ -356,64 +332,6 @@ void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
         cC.erase(cC.begin() + nearestCCIndex);
     }
 }
-
-bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas, std::vector<Cell>& cancers, 
-    int num_pontos, int num_celulas, int num_cancers, int largura_max, int altura_max,std::mt19937& rng) 
-    {
-        int max_tentativas = 100;
-        // Posicionar células
-        int tentativas_celulas = 0;
-        while (tentativas_celulas < max_tentativas && celulas.size() < num_celulas) 
-        {
-            std::uniform_int_distribution<int> distribX(0, largura_max - 1);
-            int x = distribX(rng);
-            std::uniform_int_distribution<int> distribY(0, altura_max - 1);
-            int y = distribY(rng);
-            int novo_id = celulas.size() + 1;
-            Cell nova_celula = {"N", novo_id, x, y};
-    
-            if (!verificaSobreposicaoGeral(nova_celula, pontos, celulas,cancers)) 
-            {
-                celulas.push_back(nova_celula);
-                tentativas_celulas = 0;
-            } else 
-            {
-                tentativas_celulas++;
-            }
-        }
-    
-        // Posicionar células cancerígenas
-        int tentativas_cancers = 0;
-        while (tentativas_cancers < max_tentativas && cancers.size() < num_cancers) 
-        {
-            std::uniform_int_distribution<int> distribX(0, largura_max - 1);
-            int x = distribX(rng);
-            std::uniform_int_distribution<int> distribY(0, altura_max - 1);
-            int y = distribY(rng);
-            int novo_id = cancers.size() + 1;
-            Cell nova_cancer = {"O", novo_id, x, y};
-    
-            if (!verificaSobreposicaoGeral(nova_cancer, pontos, celulas, cancers)) 
-            {
-                cancers.push_back(nova_cancer);
-                tentativas_cancers = 0;
-            } else 
-            {
-                tentativas_cancers++;
-            }
-        }
-
-        // Verificação final de sucesso
-        if (celulas.size() == num_celulas && cancers.size() == num_cancers) 
-        {
-            return true;
-        } 
-        else 
-        {
-            return false;
-        }
-    }
-
 
 int runSimulationPaper(const int NUMSTEPS, std::vector<Cell>& cT, 
 std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng) 
