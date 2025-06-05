@@ -360,24 +360,7 @@ void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
 bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas, std::vector<Cell>& cancers, 
     int num_pontos, int num_celulas, int num_cancers, int largura_max, int altura_max,std::mt19937& rng) 
     {
-        int max_tentativas = 10000;
-        if (num_pontos != 0) 
-        {
-            //logInfo(" Obstaculos já carregados: " + std::to_string(pontos.size()));
-            // Não fazer mais nada com obstáculos
-        } else {
-            // Se num_pontos for 0, criar obstáculos aleatoriamente
-            int tentativas_pontos = 0;
-            while (tentativas_pontos < max_tentativas && pontos.size() < num_pontos) 
-            {
-                std::uniform_int_distribution<int> distribX(0, largura_max - 1);
-                int x = distribX(rng);
-                std::uniform_int_distribution<int> distribY(0, altura_max - 1);
-                int y = distribY(rng);
-                int novo_id = pontos.size() + 1;
-                Obstacle novo_ponto = {"C", novo_id, x, y};
-            }
-        }
+        int max_tentativas = 100;
         // Posicionar células
         int tentativas_celulas = 0;
         while (tentativas_celulas < max_tentativas && celulas.size() < num_celulas) 
@@ -475,7 +458,7 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
 }
         
 
-void executarRodadas(int count, int numCT, int numcC, int numPoint,
+void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc, int SR_value,
     const std::string& fileName, const std::vector<Obstacle>& point)
 {
@@ -499,11 +482,10 @@ void executarRodadas(int count, int numCT, int numcC, int numPoint,
         std::vector<Cell> cC_local;
         std::vector<Obstacle> point_local = point;
 
-        if (!posicionarObjetos( point_local, cT_local, cC_local,
-                                numPoint, numCT, numcC, 100, 100, rng_local)) 
+        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local)) 
                                 {
                                     #pragma omp critical
-                                    logError("Erro ao posicionar objetos na execução " + std::to_string(run));
+                                    logError("Failed to place the objects in the execution " + std::to_string(run));
                                     std::cin.get();
                                     continue;
                                 }
@@ -567,7 +549,7 @@ int main()
                     }
 
                     std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, SR_value);
-                    executarRodadas(count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, SR_value, fileName, point);
+                    executarRodadas(lattice,count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, SR_value, fileName, point);
                 }
             }
         }
