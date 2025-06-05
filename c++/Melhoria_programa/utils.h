@@ -1,6 +1,6 @@
+#pragma once
 #ifndef UTILS_H
 #define UTILS_H
-
 #include <cmath> // para std::abs
 #include "config.h" // Para usar WIDTH e HEIGHT, se necessário
 #include <iostream>
@@ -96,5 +96,16 @@ inline bool fileExists(const std::string& filename) {
     return file.good(); // Verifica se o arquivo pode ser aberto
 }
 
+inline std::string gerarNomeArquivo(int numCT, int numcC, int numPoint,
+    double ncNoise_cc, double ncNoise_ct,
+    int SR_value) 
+{   
+return "NC_" + std::to_string(numCT) +
+"_NE_" + std::to_string(numcC) +
+"_O_" + std::to_string(numPoint) +
+"_TCC_" + std::to_string(ncNoise_cc) +
+"_TCT_" + std::to_string(ncNoise_ct) +
+"_SR_" + std::to_string(SR_value) + ".dat";
+}
 
 #endif // UTILS_H
