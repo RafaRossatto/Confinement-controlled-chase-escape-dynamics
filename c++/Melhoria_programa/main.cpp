@@ -607,7 +607,9 @@ int main()
 
                     if (!carregarObstaculos(point, numPoint, line)) 
                     {
-                        continue; // Se não carregar, pula para o próximo
+                        logError("Erro ao posicionar obstaculos ");
+                        std::cin.get();
+                        continue;
                     }
                     std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, SR_value);
                     executarRodadas(count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, SR_value, fileName, point);
