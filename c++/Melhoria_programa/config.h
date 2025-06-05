@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 #include<vector>
+
 // Tamanho do grid
 const int NORTH = 0;          /**< Direction: North */
 const int EAST = 1;           /**< Direction: East */

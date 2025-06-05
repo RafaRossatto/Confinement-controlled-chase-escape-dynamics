@@ -474,47 +474,6 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
     return steps;
 }
 
-/*
-bool carregarObstaculos(std:: vector<Obstacle>& point, int numPoint, std:: string& line)
-{
-    if (numPoint == 0)
-    {
-        return true; // Faz nada
-    }
-    
-    std:: string filename = "obstacules_" + std::to_string(numPoint)+ ".txt";
-    if (!fileExists(filename))
-    {
-        logError("Erro ao abrir o arquivo " + filename + "nao existe");
-        std::cin.get();
-        return false; 
-    }
-
-    std:: ifstream inputFile(filename);
-    if (!inputFile.is_open())
-    {
-        logError("Erro ao abrir o arquivo " + filename);
-        std::cin.get();
-        return false; 
-    }
-    int id_counter = 1;
-    int x,y;
-    
-    while (std::getline(inputFile,line))
-    {
-        std:: istringstream lineStream(line);
-        if (lineStream >> x >> y)
-        {
-            Obstacle new_obstacle = {"C", id_counter ++, x,y};
-            point.push_back(new_obstacle);
-        }
-       
-    }
-    inputFile.close();
-    return true;    
-}
-*/
-
 std::string gerarNomeArquivo(int numCT, int numcC, int numPoint,
     double ncNoise_cc, double ncNoise_ct,
     int SR_value) 
