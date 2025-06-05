@@ -473,20 +473,7 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
     }
     return steps;
 }
-
-/*
-std::string gerarNomeArquivo(int numCT, int numcC, int numPoint,
-    double ncNoise_cc, double ncNoise_ct,
-    int SR_value) 
-    {   
-        return "NC_" + std::to_string(numCT) +
-        "_NE_" + std::to_string(numcC) +
-        "_O_" + std::to_string(numPoint) +
-        "_TCC_" + std::to_string(ncNoise_cc) +
-        "_TCT_" + std::to_string(ncNoise_ct) +
-        "_SR_" + std::to_string(SR_value) + ".dat";
-    }
-*/        
+        
 
 void executarRodadas(int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc, int SR_value,
