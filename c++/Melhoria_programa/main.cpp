@@ -483,6 +483,7 @@ bool carregarObstaculos(std:: vector<Obstacle>& point, int numPoint, std:: strin
     if (!fileExists(filename))
     {
         logError("Erro ao abrir o arquivo " + filename + "nao existe");
+        std::cin.get();
         return false; 
     }
 
@@ -490,6 +491,7 @@ bool carregarObstaculos(std:: vector<Obstacle>& point, int numPoint, std:: strin
     if (!inputFile.is_open())
     {
         logError("Erro ao abrir o arquivo " + filename);
+        std::cin.get();
         return false; 
     }
     int id_counter = 1;
@@ -529,6 +531,7 @@ void executarRodadas(int count, int numCT, int numcC, int numPoint,
     if (!outputFile.is_open()) 
     {
         logError("Erro ao abrir o arquivo " + fileName);
+        std::cin.get();
         return;
     }
 
@@ -549,6 +552,7 @@ void executarRodadas(int count, int numCT, int numcC, int numPoint,
                                 {
                                     #pragma omp critical
                                     logError("Erro ao posicionar objetos na execução " + std::to_string(run));
+                                    std::cin.get();
                                     continue;
                                 }
 
