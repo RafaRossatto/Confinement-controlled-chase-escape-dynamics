@@ -5,8 +5,6 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <random>
-#include <algorithm>
 #include <sstream>
 #include<utility>
 
@@ -184,6 +182,56 @@ void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY,
     x = prevX;
     y = prevY;
 }
+
+void randonWalk(int& x, int& y,int move)
+{
+    switch (move) 
+    {
+        case NORTH:
+            y = (y+1)%HEIGHT;
+            break;
+        
+        case EAST:
+            x=(x+1)% WIDTH;
+            break;
+        case SOUTH:
+            y = (y - 1 + HEIGHT) % HEIGHT;
+            break;
+        case WEST:
+            x = (x - 1 + WIDTH) % WIDTH;
+            break;
+    }
+}
+
+
+void moveTowardsPoint(int &x, int &y, int targetX, int targetY) 
+{
+    // Se a posição X ainda não está alinhada com o alvo, mover primeiro no eixo X
+    if (x != targetX) 
+    {
+        if (x < targetX) 
+        {
+            x = (x + 1) % WIDTH; // Move para a direita
+        } 
+        else 
+        {
+            x = (x - 1 + WIDTH) % WIDTH; // Move para a esquerda
+        }
+    }
+    // Se a posição X já está alinhada, mover no eixo Y
+    else if (y != targetY) 
+    {
+        if (y < targetY) 
+        {
+            y = (y + 1) % HEIGHT; // Move para cima
+        } 
+        else 
+        {
+            y = (y - 1 + HEIGHT) % HEIGHT; // Move para baixo
+        }
+    }
+}
+
 
 void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
                     std::vector<Obstacle>& obstaculos, std:: mt19937& rng)

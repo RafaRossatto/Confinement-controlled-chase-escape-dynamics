@@ -56,26 +56,6 @@ inline void moveTowardsPoint(int &x, int &y, int targetX, int targetY)
     }
 }
 
-inline void randonWalk(int& x, int& y,int move)
-{
-    switch (move) 
-    {
-        case NORTH:
-            y = (y+1)%HEIGHT;
-            break;
-        
-        case EAST:
-            x=(x+1)% WIDTH;
-            break;
-        case SOUTH:
-            y = (y - 1 + HEIGHT) % HEIGHT;
-            break;
-        case WEST:
-            x = (x - 1 + WIDTH) % WIDTH;
-            break;
-    }
-}
-
 inline void openFile(const std::string& fileName) 
 {
     // Abre o arquivo em modo de escrita e apêndice
