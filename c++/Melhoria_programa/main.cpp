@@ -1,6 +1,7 @@
 #include "obstacle.h"
 #include "config.h"
 #include "utils.h"
+#include "cell.h"
 #include "cell_lattice.h"
 #include <iostream>
 #include <fstream>
@@ -31,6 +32,7 @@ void setSEARCHRADIUS(int newValue)
 }
      
 
+/*
 void randonWalk(int& x, int& y,int move)
 {
     switch (move) 
@@ -50,10 +52,12 @@ void randonWalk(int& x, int& y,int move)
             break;
     }
 }
+    
+*/
 
 void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY, int nProbability,
     std::vector<Cell>& celulas, std::vector<Cell>& cC, std::vector<Obstacle>& obstaculos,
-    int verificacC, bool isPursuing,std::mt19937& rng ) 
+    int verificacC, bool isPursuing,std::mt19937& rng,Cell& celula) 
 {
     int prevX = x, prevY = y;
     int newX = x, newY = y;
@@ -128,7 +132,7 @@ void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY,
                 // Seleciona uma direção dentre as possíveis
                 std::uniform_int_distribution<int> dist(0, direcoesPossiveis.size()-1);
                 int direcaoEscolhida = direcoesPossiveis[dist(rng)];
-                randonWalk(newX, newY, direcaoEscolhida);
+                celula.randonWalk(newX, newY, direcaoEscolhida);
             }
             else
             {
@@ -179,14 +183,14 @@ void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY,
                 // Como estamos na diagonal, geralmente teremos duas direções
                 std::uniform_int_distribution<int> dist(0, direcoesPossiveis.size()-1);
                 int direcaoEscolhida = direcoesPossiveis[dist(rng)];
-                randonWalk(newX, newY, direcaoEscolhida);
+                celula.randonWalk(newX, newY, direcaoEscolhida);
             }
         }
         else
         {
             // Movimento aleatório
             std::uniform_int_distribution<int> dis(0, 3);
-            randonWalk(newX, newY, dis(rng));
+            celula.randonWalk(newX, newY, dis(rng));
         }
 
         if (!lattice.isOccupied(newX, newY, celulas, cC, obstaculos, verificacC))
@@ -229,7 +233,7 @@ void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,st
                         cT[nearestCTIndex].getCoordenadaY(),
                         randomValue, cT, cC,
                         obstaculos, verificacC,
-                        isPursiung, rng);
+                        isPursiung, rng,celula);
         }
     
         else
@@ -240,7 +244,7 @@ void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,st
             movePosition(lattice,x,y,0, 0,
                 randomValue, cT, cC,
                 obstaculos, verificacC,
-                isPursiung, rng);
+                isPursiung, rng,celula);
         }
     
         celula.changePosition(x,y);
@@ -272,7 +276,7 @@ void moverCelulaBoa(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std
                     cC[nearestCCIndex].getCoordenadaY(),
                     randomValue, cT, cC,
                     obstaculos, verificacC,
-                    isPursiung, rng);
+                    isPursiung, rng,celula);
     }
     else
     {
@@ -282,7 +286,7 @@ void moverCelulaBoa(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std
         movePosition(lattice,x,y,0, 0,
             randomValue, cT, cC,
             obstaculos, verificacC,
-            isPursiung, rng);
+            isPursiung, rng,celula);
     }
 
     celula.changePosition(x,y);

@@ -62,3 +62,23 @@ nearestIndex = i;
 
 return {nearestIndex, minDistance};
 }
+
+void Cell::randonWalk(int& x, int& y,int move)
+{
+    switch (move) 
+    {
+        case NORTH:
+            y = (y+1)%HEIGHT;
+            break;
+        
+        case EAST:
+            x=(x+1)% WIDTH;
+            break;
+        case SOUTH:
+            y = (y - 1 + HEIGHT) % HEIGHT;
+            break;
+        case WEST:
+            x = (x - 1 + WIDTH) % WIDTH;
+            break;
+    }
+}
