@@ -31,33 +31,9 @@ void setSEARCHRADIUS(int newValue)
     SEARCHRADIUS = newValue;
 }
      
-
-/*
-void randonWalk(int& x, int& y,int move)
-{
-    switch (move) 
-    {
-        case NORTH:
-            y = (y+1)%HEIGHT;
-            break;
-        
-        case EAST:
-            x=(x+1)% WIDTH;
-            break;
-        case SOUTH:
-            y = (y - 1 + HEIGHT) % HEIGHT;
-            break;
-        case WEST:
-            x = (x - 1 + WIDTH) % WIDTH;
-            break;
-    }
-}
-    
-*/
-
 void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY, int nProbability,
-    std::vector<Cell>& celulas, std::vector<Cell>& cC, std::vector<Obstacle>& obstaculos,
-    int verificacC, bool isPursuing,std::mt19937& rng,Cell& celula) 
+std::vector<Cell>& celulas, std::vector<Cell>& cC, std::vector<Obstacle>& obstaculos,
+int verificacC, bool isPursuing,std::mt19937& rng,Cell& celula) 
 {
     int prevX = x, prevY = y;
     int newX = x, newY = y;
@@ -66,7 +42,6 @@ void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY,
 
     while (attemptCount < maxAttempts)
     {
-        // Reinicializa newX, newY a cada tentativa para evitar acumulação
         newX = x;
         newY = y;
 
@@ -227,7 +202,6 @@ void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,st
             isPursiung = false;
             std:: bernoulli_distribution d(CCPROBABILITY);
             randomValue = d(rng) ? 1: 0 ;
-    
             movePosition(lattice,x,y,
                         cT[nearestCTIndex].getCoordenadaX(),
                         cT[nearestCTIndex].getCoordenadaY(),
