@@ -11,6 +11,8 @@
 #include <random>            // para std::mt19937
 #include "obstacle.h"        // para classe Obstacle
 
+class Cell;
+
 class CellLattice 
 {
     private:

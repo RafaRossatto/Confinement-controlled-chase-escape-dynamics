@@ -1,5 +1,4 @@
 #include "obstacle.h"
-#include "cell.h"
 #include "config.h"
 #include "utils.h"
 #include "cell_lattice.h"
@@ -32,34 +31,7 @@ void setSEARCHRADIUS(int newValue)
 {
     SEARCHRADIUS = newValue;
 }
-
-std::pair<int,int> encontrarAlvosMaisProximo(int x,int y,
-                                            const std:: vector<Cell> alvos,
-                                            int searchRadius)
-{
-    int nearestIndex = -1;
-    int minDistance = std:: numeric_limits<int>::max();
-
-    //std:: vector<int> RAIOS_PROGRESSIVOS = {5, 10, 20, 30, 40, 50};
-
-    for (int radius : RAIOS_PROGRESSIVOS)
-    {
-        if (radius > searchRadius) break;
-        for (int i = 0; i < alvos.size(); i++)
-        {
-            int distance = CellLattice::calculateDistance(x,y, alvos[i].getCoordenadaX(),
-                                           alvos[i].getCoordenadaY());
-    
-            if (distance <= radius and distance < minDistance)
-            {
-                minDistance = distance;
-                nearestIndex = i;
-            }
-        }
-    }    
-    return{nearestIndex, minDistance};
-}           
-
+     
 void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY, int nProbability,
     std::vector<Cell>& celulas, std::vector<Cell>& cC, std::vector<Obstacle>& obstaculos,
     int verificacC, bool isPursuing,std::mt19937& rng ) 
@@ -220,7 +192,9 @@ void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,st
         int x = celula.getCoordenadaX();
         int y = celula.getCoordenadaY();
         
-        auto [nearestCTIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, SEARCHRADIUS);
+        //auto [nearestCTIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, SEARCHRADIUS);
+        auto [nearestCTIndex, distanciaAteCancer] = celula.findNearestTarget(cT, SEARCHRADIUS,lattice);
+        //std::pair<int, int> resultado = celulaAtual.findNearestTarget(alvos, 10, lattice);
         bool isPursiung;
         int randomValue;
         const bool verificacC = true;
@@ -260,7 +234,8 @@ void moverCelulaBoa(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std
     int x = celula.getCoordenadaX();
     int y = celula.getCoordenadaY();
     
-    auto [nearestCCIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, SEARCHRADIUS);
+    //auto [nearestCCIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, SEARCHRADIUS);
+    auto [nearestCCIndex, distanciaAteCancer] = celula.findNearestTarget(cC, SEARCHRADIUS,lattice);
     bool isPursiung;
     int randomValue;
     const bool verificacC = false;
@@ -428,7 +403,6 @@ int main()
                         std::cin.get();
                         return 1;
                     }
-
                     std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, SR_value);
                     executarRodadas(lattice,count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, SR_value, fileName, point);
                 }

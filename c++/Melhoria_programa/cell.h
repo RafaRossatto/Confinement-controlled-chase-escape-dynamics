@@ -1,6 +1,10 @@
 #pragma once
 
 #include <string>
+#include "cell_lattice.h"
+#include <limits>
+class CellLattice;
+
 class Cell 
 {
     private:
@@ -12,7 +16,9 @@ class Cell
     public:
     
         Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY);
-    
+
+        std::pair<int, int> findNearestTarget(const std::vector<Cell>& targets,
+            int searchRadius, const CellLattice& lattice) const;
 
     // Getters
     std::string getTipo() const; 

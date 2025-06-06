@@ -106,30 +106,30 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
 }
 
 bool CellLattice::isOccupied(int x, int y,
-    const std::vector<Cell>& normalCells,
-    const std::vector<Cell>& cancerCells,
-    const std::vector<Obstacle>& obstacles,
-    bool checkCancer) const
+                             const std::vector<Cell>& normalCells,
+                             const std::vector<Cell>& cancerCells,
+                             const std::vector<Obstacle>& obstacles,
+                             bool checkCancer) const
 {
-for (const auto& cell : normalCells) {
-if (cell.getCoordenadaX() == x && cell.getCoordenadaY() == y) {
-return true;
-}
-}
+    for (const auto& cell : normalCells) {
+        if (cell.getCoordenadaX() == x && cell.getCoordenadaY() == y) {
+            return true;
+        }
+    }
 
-if (checkCancer) {
-for (const auto& cancer : cancerCells) {
-if (cancer.getCoordenadaX() == x && cancer.getCoordenadaY() == y) {
-return true;
-}
-}
-}
+    if (checkCancer) {
+        for (const auto& cancer : cancerCells) {
+            if (cancer.getCoordenadaX() == x && cancer.getCoordenadaY() == y) {
+                return true;
+            }
+        }
+    }
 
-for (const auto& obs : obstacles) {
-if (obs.getCoordenadaX() == x && obs.getCoordenadaY() == y) {
-return true;
-}
-}
+    for (const auto& obs : obstacles) {
+        if (obs.getCoordenadaX() == x && obs.getCoordenadaY() == y) {
+            return true;
+        }
+    }
 
-return false;
+    return false;
 }

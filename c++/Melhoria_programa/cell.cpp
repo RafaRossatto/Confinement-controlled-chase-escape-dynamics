@@ -37,3 +37,28 @@ void Cell::changePosition(int newX, int newY)
     m_coordenadaY = newY;
 }
 
+std::pair<int, int> Cell::findNearestTarget(const std::vector<Cell>& targets,
+    int searchRadius,
+    const CellLattice& lattice) const
+{
+int nearestIndex = -1;
+int minDistance = std::numeric_limits<int>::max();
+
+for (int radius : RAIOS_PROGRESSIVOS) {
+if (radius > searchRadius) break;
+
+for (int i = 0; i < targets.size(); ++i) {
+int distance = lattice.calculateDistance(this->getCoordenadaX(),
+             this->getCoordenadaY(),
+             targets[i].getCoordenadaX(),
+             targets[i].getCoordenadaY());
+
+if (distance <= radius && distance < minDistance) {
+minDistance = distance;
+nearestIndex = i;
+}
+}
+}
+
+return {nearestIndex, minDistance};
+}
