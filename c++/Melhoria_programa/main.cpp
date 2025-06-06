@@ -30,6 +30,27 @@ void setSEARCHRADIUS(int newValue)
     SEARCHRADIUS = newValue;
 }
      
+
+void randonWalk(int& x, int& y,int move)
+{
+    switch (move) 
+    {
+        case NORTH:
+            y = (y+1)%HEIGHT;
+            break;
+        
+        case EAST:
+            x=(x+1)% WIDTH;
+            break;
+        case SOUTH:
+            y = (y - 1 + HEIGHT) % HEIGHT;
+            break;
+        case WEST:
+            x = (x - 1 + WIDTH) % WIDTH;
+            break;
+    }
+}
+
 void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY, int nProbability,
     std::vector<Cell>& celulas, std::vector<Cell>& cC, std::vector<Obstacle>& obstaculos,
     int verificacC, bool isPursuing,std::mt19937& rng ) 
@@ -183,27 +204,8 @@ void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY,
     y = prevY;
 }
 
-void randonWalk(int& x, int& y,int move)
-{
-    switch (move) 
-    {
-        case NORTH:
-            y = (y+1)%HEIGHT;
-            break;
-        
-        case EAST:
-            x=(x+1)% WIDTH;
-            break;
-        case SOUTH:
-            y = (y - 1 + HEIGHT) % HEIGHT;
-            break;
-        case WEST:
-            x = (x - 1 + WIDTH) % WIDTH;
-            break;
-    }
-}
 
-
+/*
 void moveTowardsPoint(int &x, int &y, int targetX, int targetY) 
 {
     // Se a posição X ainda não está alinhada com o alvo, mover primeiro no eixo X
@@ -231,7 +233,7 @@ void moveTowardsPoint(int &x, int &y, int targetX, int targetY)
         }
     }
 }
-
+*/
 
 void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
                     std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
