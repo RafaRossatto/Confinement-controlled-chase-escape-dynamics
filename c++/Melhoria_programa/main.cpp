@@ -301,11 +301,6 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
     int steps = 1; // Step counter
     bool isPursuing,verificacC;
 
-    // Search radius to find resources or cells
-    
-    // Initialize random number generator and Bernoulli distribution
-
-    // Main simulation loop
     while (steps < NUMSTEPS) 
     {   
         // Process cells of type T
@@ -327,15 +322,13 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
                 moverCelulaRuim(lattice,cC[i], cT, cC, point, rng,verificacC);
             }
         }
-        // Terminate if no cancer cells remain
+
         if (cC.empty()) 
         {
 
-            //logInfo("No more cancer cells. Terminating progam");
             break;
         }
         steps++; // Increment step count
-        //std::cout << "Passo: " << steps << "\n";
     }
     return steps;
 }
