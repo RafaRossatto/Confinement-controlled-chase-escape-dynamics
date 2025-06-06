@@ -78,14 +78,6 @@ void openFile(const std::string& fileName)
 }
 
 
-
-
-
-
-
-
-
-
 // Função para calcular distância considerando condições periódicas
 double calculeDistance(int x1, int y1, int x2, int y2) {
     int dx = x2 - x1;
@@ -372,7 +364,7 @@ void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
         int x = celula.getCoordenadaX();
         int y = celula.getCoordenadaY();
         
-        auto [nearestCTIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, SEARCHRADIUS);
+        auto [nearestCTIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cT, SEARCHRADIUS);
         bool isPursiung;
         int randomValue;
         const bool verificacC = true;
