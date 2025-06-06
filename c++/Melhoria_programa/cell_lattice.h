@@ -38,6 +38,12 @@ class CellLattice
                         const std::vector<Cell>& normalCells,
                         const std::vector<Cell>& cancerCells) const;
        
+
+    bool isOccupied(int x, int y,
+                    const std::vector<Cell>& normalCells,
+                    const std::vector<Cell>& cancerCells,
+                    const std::vector<Obstacle>& obstacles,
+                    bool checkCancer) const;
 };
 
 

@@ -40,7 +40,7 @@ std::pair<int,int> encontrarAlvosMaisProximo(int x,int y,
     int nearestIndex = -1;
     int minDistance = std:: numeric_limits<int>::max();
 
-    std:: vector<int> RAIOS_PROGRESSIVOS = {5, 10, 20, 30, 40, 50};
+    //std:: vector<int> RAIOS_PROGRESSIVOS = {5, 10, 20, 30, 40, 50};
 
     for (int radius : RAIOS_PROGRESSIVOS)
     {
@@ -60,37 +60,7 @@ std::pair<int,int> encontrarAlvosMaisProximo(int x,int y,
     return{nearestIndex, minDistance};
 }           
 
-bool estaOcupado(int x, int y, const std::vector<Cell>& celulas,const std::vector<Cell>& cC, 
-const std::vector<Obstacle>& obstaculos,int verificacC) 
-{
-    for (const auto& celula : celulas) 
-    {
-        if (celula.getCoordenadaX() == x && celula.getCoordenadaY() == y) 
-        {
-            return true;
-        }
-    }
-    if(verificacC == 1)
-    {
-        for (const auto& c_celula : cC) 
-        {
-            if (c_celula.getCoordenadaX() == x && c_celula.getCoordenadaY() == y) 
-            {
-                return true;
-            }
-        }
-    }   
-    for (const auto& obstaculo : obstaculos) 
-    {
-        if (obstaculo.getCoordenadaX() == x && obstaculo.getCoordenadaY() == y) 
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
+void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY, int nProbability,
     std::vector<Cell>& celulas, std::vector<Cell>& cC, std::vector<Obstacle>& obstaculos,
     int verificacC, bool isPursuing,std::mt19937& rng ) 
 {
@@ -228,7 +198,7 @@ void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
             randonWalk(newX, newY, dis(rng));
         }
 
-        if (!estaOcupado(newX, newY, celulas, cC, obstaculos, verificacC))
+        if (!lattice.isOccupied(newX, newY, celulas, cC, obstaculos, verificacC))
         {
             x = newX;
             y = newY;
@@ -243,7 +213,7 @@ void movePosition(int& x, int& y, int targetX, int targetY, int nProbability,
     y = prevY;
 }
 
-void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
+void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
                     std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
 {
     {
@@ -261,7 +231,7 @@ void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
             std:: bernoulli_distribution d(CCPROBABILITY);
             randomValue = d(rng) ? 1: 0 ;
     
-            movePosition(x,y,
+            movePosition(lattice,x,y,
                         cT[nearestCTIndex].getCoordenadaX(),
                         cT[nearestCTIndex].getCoordenadaY(),
                         randomValue, cT, cC,
@@ -274,7 +244,7 @@ void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
             // Não achou o alvo
             isPursiung = false;
             randomValue = 0;
-            movePosition(x,y,0, 0,
+            movePosition(lattice,x,y,0, 0,
                 randomValue, cT, cC,
                 obstaculos, verificacC,
                 isPursiung, rng);
@@ -284,7 +254,7 @@ void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
     }    
 }
 
-void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
+void moverCelulaBoa(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
     std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
 {
     int x = celula.getCoordenadaX();
@@ -303,7 +273,7 @@ void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
         std:: bernoulli_distribution d(CTPROBABILITY);
         randomValue = d(rng) ? 1: 0 ;
 
-        movePosition(x,y,
+        movePosition(lattice,x,y,
                     cC[nearestCCIndex].getCoordenadaX(),
                     cC[nearestCCIndex].getCoordenadaY(),
                     randomValue, cT, cC,
@@ -315,7 +285,7 @@ void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
         // Não achou o alvo
         isPursiung = false;
         randomValue = 0;
-        movePosition(x,y,0, 0,
+        movePosition(lattice,x,y,0, 0,
             randomValue, cT, cC,
             obstaculos, verificacC,
             isPursiung, rng);
@@ -331,7 +301,7 @@ void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
     }
 }
 
-int runSimulationPaper(const int NUMSTEPS, std::vector<Cell>& cT, 
+int runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
 std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng) 
 {
     int steps = 1; // Step counter
@@ -348,7 +318,7 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
         {
             for (int i = cT.size() - 1; i >= 0; --i)
             {
-                moverCelulaBoa(cT[i], cT, cC, point, rng);
+                moverCelulaBoa(lattice,cT[i], cT, cC, point, rng);
             }
         }
 
@@ -357,7 +327,7 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
         {
             for (int i = cC.size() - 1; i >= 0; --i)
             {
-            moverCelulaRuim(cC[i], cT, cC, point, rng);
+            moverCelulaRuim(lattice,cC[i], cT, cC, point, rng);
             }
         }
         // Terminate if no cancer cells remain
@@ -403,7 +373,7 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
                                     continue;
                                 }
 
-        int steps_local = runSimulationPaper(10000, cT_local, cC_local, point_local, rng_local);
+        int steps_local = runSimulationPaper(lattice,10000, cT_local, cC_local, point_local, rng_local);
         #pragma omp critical
         {
             outputFile << run << "," << steps_local << "," << seed_run << "\n";
