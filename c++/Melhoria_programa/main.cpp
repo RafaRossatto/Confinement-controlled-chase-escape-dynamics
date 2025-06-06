@@ -205,7 +205,7 @@ void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY,
 }
 
 void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
-                    std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
+                    std::vector<Obstacle>& obstaculos, std:: mt19937& rng,bool verificacC)
 {
     {
         int x = celula.getCoordenadaX();
@@ -216,7 +216,7 @@ void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,st
         //std::pair<int, int> resultado = celulaAtual.findNearestTarget(alvos, 10, lattice);
         bool isPursiung;
         int randomValue;
-        const bool verificacC = true;
+        //const bool verificacC = true;
         
         if (nearestCTIndex != -1 and distanciaAteCancer <= SEARCHRADIUS)
         {
@@ -248,7 +248,7 @@ void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,st
 }
 
 void moverCelulaBoa(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
-    std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
+    std::vector<Obstacle>& obstaculos, std:: mt19937& rng, bool verificacC)
 {
     int x = celula.getCoordenadaX();
     int y = celula.getCoordenadaY();
@@ -257,7 +257,7 @@ void moverCelulaBoa(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std
     auto [nearestCCIndex, distanciaAteCancer] = celula.findNearestTarget(cC, SEARCHRADIUS,lattice);
     bool isPursiung;
     int randomValue;
-    const bool verificacC = false;
+    //const bool verificacC = false;
     
     if (nearestCCIndex != -1 and distanciaAteCancer <= SEARCHRADIUS)
     {
@@ -299,7 +299,8 @@ int runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell
 std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng) 
 {
     int steps = 1; // Step counter
-    bool isPursuing;
+    bool isPursuing,verificacC;
+
     // Search radius to find resources or cells
     
     // Initialize random number generator and Bernoulli distribution
@@ -312,7 +313,8 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
         {
             for (int i = cT.size() - 1; i >= 0; --i)
             {
-                moverCelulaBoa(lattice,cT[i], cT, cC, point, rng);
+                verificacC = false;
+                moverCelulaBoa(lattice,cT[i], cT, cC, point, rng,verificacC);
             }
         }
 
@@ -321,7 +323,8 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
         {
             for (int i = cC.size() - 1; i >= 0; --i)
             {
-            moverCelulaRuim(lattice,cC[i], cT, cC, point, rng);
+                verificacC = true;
+                moverCelulaRuim(lattice,cC[i], cT, cC, point, rng,verificacC);
             }
         }
         // Terminate if no cancer cells remain
