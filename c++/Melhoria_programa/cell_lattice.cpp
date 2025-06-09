@@ -57,7 +57,7 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
                         std::vector<Cell>& normalCells,
                       std::vector<Cell>& cancerCells,
                       int numObstacles, int numNormal, int numCancer,
-                      std::mt19937& rng)
+                      std::mt19937& rng,int sr_normal, int sr_cancer)
 {
     const int maxTries = 100;
 
@@ -72,6 +72,7 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
         int id = normalCells.size() + 1;
 
         Cell candidate("N", id, x, y);
+        candidate.setSearchRadius(sr_normal);
 
         if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) {
             normalCells.push_back(candidate);
@@ -92,6 +93,7 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
         int id = cancerCells.size() + 1;
 
         Cell candidate("O", id, x, y);
+        candidate.setSearchRadius(sr_cancer);
 
         if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) {
             cancerCells.push_back(candidate);

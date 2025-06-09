@@ -26,10 +26,11 @@ class CellLattice
         static double calculateDistance(int x1, int y1, int x2, int y2);
 
     bool placeObjects(std::vector<Obstacle>& obstacles,
-                      std::vector<Cell>& normalCells,
-                      std::vector<Cell>& cancerCells,
-                      int numObstacles, int numNormal, int numCancer,
-                      std::mt19937& rng);
+                  std::vector<Cell>& normalCells,
+                  std::vector<Cell>& cancerCells,
+                  int numObstacles, int numNormal, int numCancer,
+                  std::mt19937& rng,
+                  int sr_normal, int sr_cancer);
     
     template<typename T, typename U>
     bool overlapsWithList(const T& obj, const std::vector<U>& list) const;

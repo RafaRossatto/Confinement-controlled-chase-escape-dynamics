@@ -12,6 +12,7 @@ class Cell
     int m_numero;          /**< The number of the agent. */ 
     int m_coordenadaX; /**< The x-coordinate of the agent's position. */
     int m_coordenadaY; /**< The y-coordinate of the agent's position. */
+    int search_radius;
 
     public:
     
@@ -27,7 +28,9 @@ class Cell
     int getNumero() const; 
     int getCoordenadaX() const; 
     int getCoordenadaY() const;
-    
+    void setSearchRadius(int sr);
+    int getSearchRadius() const;
+
     // Método para alterar a posição
     void changePosition(int newX,int newY);
 };

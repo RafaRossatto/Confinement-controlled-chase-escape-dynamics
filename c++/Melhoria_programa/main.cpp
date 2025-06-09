@@ -12,7 +12,7 @@
 std::random_device rd;
 unsigned int GLOBAL_SEED = rd();
 
-int SEARCHRADIUS = 40; // raio de procura.
+//int SEARCHRADIUS = 40; // raio de procura.
 double CTPROBABILITY = 0.50; // probabilidade de capturar ou procurar comida
 double CCPROBABILITY = 0.50; // probabilidade de escapar ou procurar comida
 
@@ -24,11 +24,6 @@ void setCTPROBABILITY(double newValue)
 void setCCPROBABILITY(double newValue)
 {
     CCPROBABILITY = newValue;
-}
-
-void setSEARCHRADIUS(int newValue)
-{
-    SEARCHRADIUS = newValue;
 }
      
 void movePosition(CellLattice& lattice,int& x, int& y, int targetX, int targetY, int nProbability,
@@ -189,15 +184,12 @@ void moverCelulaRuim(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,st
     {
         int x = celula.getCoordenadaX();
         int y = celula.getCoordenadaY();
-        
-        //auto [nearestCTIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, SEARCHRADIUS);
-        auto [nearestCTIndex, distanciaAteCancer] = celula.findNearestTarget(cT, SEARCHRADIUS,lattice);
-        //std::pair<int, int> resultado = celulaAtual.findNearestTarget(alvos, 10, lattice);
+
         bool isPursiung;
         int randomValue;
-        //const bool verificacC = true;
         
-        if (nearestCTIndex != -1 and distanciaAteCancer <= SEARCHRADIUS)
+        auto [nearestCTIndex, distanciaAteCancer] = celula.findNearestTarget(cT, celula.getSearchRadius(), lattice);
+        if (nearestCTIndex != -1 and distanciaAteCancer <= celula.getSearchRadius())
         {
             isPursiung = false;
             std:: bernoulli_distribution d(CCPROBABILITY);
@@ -230,17 +222,12 @@ void moverCelulaBoa(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std
 {
     int x = celula.getCoordenadaX();
     int y = celula.getCoordenadaY();
-    
-    //auto [nearestCCIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, SEARCHRADIUS);
-    auto [nearestCCIndex, distanciaAteCancer] = celula.findNearestTarget(cC, SEARCHRADIUS,lattice);
+
     bool isPursiung;
     int randomValue;
-    //const bool verificacC = false;
-    
-    if (nearestCCIndex != -1 and distanciaAteCancer <= SEARCHRADIUS)
+    auto [nearestCCIndex, distanciaAteCancer] = celula.findNearestTarget(cC, celula.getSearchRadius(), lattice);
+    if (nearestCCIndex != -1 and distanciaAteCancer <= celula.getSearchRadius())
     {
-        // Achou alvo próximo
-
         isPursiung = true;
         std:: bernoulli_distribution d(CTPROBABILITY);
         randomValue = d(rng) ? 1: 0 ;
@@ -290,7 +277,6 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
                 moverCelulaBoa(lattice,cT[i], cT, cC, point, rng,verificacC);
             }
         }
-
         // Process cancer cells
         if (!cC.empty())
         {
@@ -303,7 +289,6 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
 
         if (cC.empty()) 
         {
-
             break;
         }
         steps++; // Increment step count
@@ -312,8 +297,8 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
 }
         
 void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
-    double ncNoise_ct, double ncNoise_cc, int SR_value,
-    const std::string& fileName, const std::vector<Obstacle>& point)
+    double ncNoise_ct, double ncNoise_cc,
+    const std::string& fileName, const std::vector<Obstacle>& point,int sr_normal,int sr_cancer)
 {
     std::ofstream outputFile(fileName);
     if (!outputFile.is_open()) 
@@ -333,7 +318,7 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
         std::vector<Cell> cC_local;
         std::vector<Obstacle> point_local = point;
 
-        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local)) 
+        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local,sr_normal,sr_cancer)) 
                                 {
                                     #pragma omp critical
                                     logError("Failed to place the objects in the execution " + std::to_string(run));
@@ -353,25 +338,23 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
 
 int main() 
 {
-    int count, steps, numCT, numcC, numPoint, SR_value, x, y;
+    int count, steps, numCT, numcC, numPoint, x, y;
 
     std::vector<int> numcC_values = {1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 500, 1000};
     std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};
     std::vector<double> numNoise_ct = {0.95};
     std::vector<double> numNoise_cc = {0.95};
+    int sr_normal = 50;
+    int sr_cancer = 5;
 
     std::vector<Cell> cT;
     std::vector<Cell> cC;
     std::vector<Obstacle> point;
     std::string line;
-
-
     CellLattice lattice(WIDTH,HEIGHT);
 
     numCT = 500;
     count = 1e3;
-    SR_value = 50;
-    setSEARCHRADIUS(SR_value);
 
     for (double ncNoise_ct : numNoise_ct) 
     {
@@ -396,8 +379,9 @@ int main()
                         std::cin.get();
                         return 1;
                     }
-                    std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, SR_value);
-                    executarRodadas(lattice,count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, SR_value, fileName, point);
+                    std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, sr_normal,sr_cancer);
+                    executarRodadas(lattice,count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, fileName, point,
+                    sr_normal,sr_cancer);
                 }
             }
         }
