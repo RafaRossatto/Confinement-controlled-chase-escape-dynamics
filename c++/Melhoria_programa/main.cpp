@@ -260,7 +260,8 @@ void moverCelulaBoa(CellLattice& lattice,Cell& celula, std:: vector<Cell>&cT,std
     }
 }
 
-int runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
+
+std::pair<int, int> runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
 std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng) 
 {
     int steps = 1; // Step counter
@@ -293,13 +294,14 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
         }
         steps++; // Increment step count
     }
-    return steps;
+    return {steps, static_cast<int>(cC.size())};
 }
         
 void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc,
     const std::string& fileName, const std::vector<Obstacle>& point,int sr_normal,int sr_cancer)
 {
+    int remaining_cC;
     std::ofstream outputFile(fileName);
     if (!outputFile.is_open()) 
     {
@@ -307,12 +309,12 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
         std::cin.get();
         return;
     }
-    outputFile << "run,steps,seed\n";
+    outputFile << "run,steps,escapers,seed\n";
 
     #pragma omp parallel for schedule(dynamic)
     for (int run = 1; run <= count; ++run) 
     {
-        unsigned int seed_run = GLOBAL_SEED + run + 1000 * numcC + 100000 * numPoint;
+        unsigned int seed_run = GLOBAL_SEED + 10* sr_cancer + 10 * sr_normal + run + 1000 * numcC + 100000 * numPoint;
         std::mt19937 rng_local(seed_run);
         std::vector<Cell> cT_local;
         std::vector<Cell> cC_local;
@@ -326,10 +328,12 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
                                     continue;
                                 }
 
-        int steps_local = runSimulationPaper(lattice,10000, cT_local, cC_local, point_local, rng_local);
+        //int steps_local = runSimulationPaper(lattice,10000, cT_local, cC_local, point_local, rng_local);
+        auto [steps_local, remaining_cC] = runSimulationPaper(lattice, 10000, cT_local, cC_local, point_local, rng_local);
+
         #pragma omp critical
         {
-            outputFile << run << "," << steps_local << "," << seed_run << "\n";
+            outputFile << run << "," << steps_local << "," << remaining_cC << "," << seed_run << "\n";
         }
     }
     outputFile.close();
