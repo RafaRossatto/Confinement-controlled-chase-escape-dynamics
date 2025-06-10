@@ -340,12 +340,14 @@ int main()
 {
     int count, steps, numCT, numcC, numPoint, x, y;
 
-    std::vector<int> numcC_values = {1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 500, 1000};
-    std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};
+    //std::vector<int> numcC_values = {1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 500, 1000};
+    std::vector<int> numcC_values = {100};
+    //std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};
+    std::vector<int> numPoint_values = {0};
     std::vector<double> numNoise_ct = {0.95};
     std::vector<double> numNoise_cc = {0.95};
-    int sr_normal = 50;
-    int sr_cancer = 5;
+    int sr_normal = 1;
+    int sr_cancer = 1;
 
     std::vector<Cell> cT;
     std::vector<Cell> cC;
@@ -354,37 +356,46 @@ int main()
     CellLattice lattice(WIDTH,HEIGHT);
 
     numCT = 500;
-    count = 1e3;
+    count = 20;
 
-    for (double ncNoise_ct : numNoise_ct) 
+    for (int sr_normal = 1; sr_normal <= 50; ++sr_normal) 
     {
-        setCTPROBABILITY(ncNoise_ct);
-        for (double ncNoise_cc : numNoise_cc) 
+        for (int sr_cancer = 1; sr_cancer <= 50; ++sr_cancer)
         {
-            setCCPROBABILITY(ncNoise_cc);
 
-            for (int ncC_value : numcC_values) 
+        for (double ncNoise_ct : numNoise_ct) 
+        {
+            setCTPROBABILITY(ncNoise_ct);
+
+            for (double ncNoise_cc : numNoise_cc) 
             {
-                numcC = ncC_value;
+                setCCPROBABILITY(ncNoise_cc);
 
-                for (int np_value : numPoint_values) 
+                for (int ncC_value : numcC_values) 
                 {
-                    numPoint = np_value;
-                    cT.clear();
-                    cC.clear();
-                    point.clear();
-                    
-                    if (!lattice.loadObstacles(point, numPoint, line)) {
-                        logError("Failed to load obstacles");
-                        std::cin.get();
-                        return 1;
+                    numcC = ncC_value;
+
+                    for (int np_value : numPoint_values) 
+                    {
+                        numPoint = np_value;
+                        cT.clear();
+                        cC.clear();
+                        point.clear();
+
+                        if (!lattice.loadObstacles(point, numPoint, line)) {
+                            logError("Failed to load obstacles");
+                            std::cin.get();
+                            return 1;
+                        }
+
+                        std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, sr_normal, sr_cancer);
+                        executarRodadas(lattice, count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, fileName, point, sr_normal, sr_cancer);
                     }
-                    std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, sr_normal,sr_cancer);
-                    executarRodadas(lattice,count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, fileName, point,
-                    sr_normal,sr_cancer);
                 }
             }
         }
+
     }
+}
     return 0;
 }
