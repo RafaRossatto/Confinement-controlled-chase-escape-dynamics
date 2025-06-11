@@ -450,7 +450,7 @@ void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
 }
 
 bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas, std::vector<Cell>& cancers, 
-    int num_pontos, int num_celulas, int num_cancers, int largura_max, int altura_max,std::mt19937& rng) 
+    int num_pontos, int num_celulas, int num_cancers, int largura_max, int altura_max,std::mt19937& rng,int sr_normal,int sr_cancer) 
     {
         int max_tentativas = 100;
         if (num_pontos != 0) 
@@ -478,6 +478,7 @@ bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas
             int y = distribY(rng);
             int novo_id = celulas.size() + 1;
             Cell nova_celula = {"N", novo_id, x, y};
+            nova_celula.setSearchRadius(sr_normal);
     
             if (!verificaSobreposicaoGeral(nova_celula, pontos, celulas,cancers)) {
                 celulas.push_back(nova_celula);
@@ -497,6 +498,7 @@ bool posicionarObjetos(std::vector<Obstacle>& pontos, std::vector<Cell>& celulas
             int y = distribY(rng);
             int novo_id = cancers.size() + 1;
             Cell nova_cancer = {"O", novo_id, x, y};
+            nova_cancer.setSearchRadius(sr_cancer);
     
             if (!verificaSobreposicaoGeral(nova_cancer, pontos, celulas, cancers)) {
                 cancers.push_back(nova_cancer);
@@ -632,6 +634,8 @@ int main()
     setCTPROBABILITY(ncNoise_ct);
     setCCPROBABILITY(ncNoise_cc);
     setSEARCHRADIUS(SR_value);
+    int sr_cancer = 50;
+    int sr_normal = 50;
 
     bool write = true;
     std::mt19937 rng_local(seed_run);
@@ -662,18 +666,19 @@ int main()
         }
     // Posiciona todos os elementos
     if (!posicionarObjetos(point, cT, cC, numPoint, numCT,
-         numcC, 100, 100,rng_local)) 
+         numcC, 100, 100,rng_local,sr_normal,sr_cancer)) 
     {
         std::cerr << "Erro ao posicionar objetos para run " << run << "\n";
         return 1;
     }
 
 
-    std::string trajectoryFileName = "Run_Trajectory_NH_500_NE_" + std::to_string(numcC) + "_O_" +
-                                     std::to_string(numPoint) + "_TCC_" +
-                                     std::to_string(ncNoise_cc) + "_TCT_" +
-                                     std::to_string(ncNoise_ct) + "_SR_" +
-                                     std::to_string(SR_value) + "_Run_" + std::to_string(run) + ".xyz";
+    std::string trajectoryFileName = "Run_Trajectory_NH_500_NE_" + std::to_string(numcC) +
+                                    "_O_" + std::to_string(numPoint) +
+                                    "_TCC_" + std::to_string(ncNoise_cc) +
+                                    "_SR_" + std::to_string(sr_cancer)+
+                                    "_TCT_" + std::to_string(ncNoise_ct) +
+                                    "_SR_" + std::to_string(sr_normal)+"Run_"+ std:: to_string(run) + ".xyz";
 
     int steps_local = runSimulationPaper(10000, cT, cC, point, trajectoryFileName,rng_local, true);
 

@@ -95,3 +95,10 @@ void Cell:: cellHurt()
 {
     m_hurt = true;
 }
+void Cell::setSearchRadius(int sr) {
+    search_radius = sr;
+}
+
+int Cell::getSearchRadius() const {
+    return search_radius;
+}

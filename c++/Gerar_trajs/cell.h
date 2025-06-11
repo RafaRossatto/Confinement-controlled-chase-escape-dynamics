@@ -11,7 +11,9 @@ class Cell
     int m_lifeCycle;
     int m_division;
     bool m_hurt;
-    
+    int search_radius;
+
+
     public:
     
         Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY);
@@ -42,4 +44,7 @@ class Cell
     void chanceEnergy(int m_energy);
 
     void cellHurt();
+
+    void setSearchRadius(int sr);
+    int getSearchRadius() const;
 };
