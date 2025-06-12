@@ -611,6 +611,7 @@ bool write,int sr_normal, int sr_cancer)
 
 //8,41,0,2241289420
 //12,35,0,2241289174
+//12,280,0,2709020504
 int main() 
 {
     // Parâmetros do caso específico
@@ -618,13 +619,13 @@ int main()
     int numCT = 500;
     int numcC = 100; // ajuste conforme o caso do .dat
     int numPoint = 0; // idem
-    double ncNoise_ct = 0.95;
-    double ncNoise_cc = 0.95;
-    unsigned int seed_run = 2241289174; // do .dat
+    double ncNoise_ct = 0.05;
+    double ncNoise_cc = 0.05;
+    unsigned int seed_run = 2709020504; // do .dat
 
     setCTPROBABILITY(ncNoise_ct);
     setCCPROBABILITY(ncNoise_cc);
-    int sr_cancer = 45;
+    int sr_cancer = 50;
     int sr_normal = 5;
 
     bool write = true;
