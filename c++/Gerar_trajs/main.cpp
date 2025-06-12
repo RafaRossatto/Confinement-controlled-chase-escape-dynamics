@@ -11,7 +11,7 @@
 std::random_device rd;
 unsigned int GLOBAL_SEED = rd();
 
-int SEARCHRADIUS = 40; // raio de procura.
+//int SEARCHRADIUS = 40; // raio de procura.
 double CTPROBABILITY = 0.50; // probabilidade de capturar ou procurar comida
 double CCPROBABILITY = 0.50; // probabilidade de escapar ou procurar comida
 const int NORTH = 0;          /**< Direction: North */
@@ -39,11 +39,6 @@ void setCTPROBABILITY(double newValue)
 void setCCPROBABILITY(double newValue)
 {
     CCPROBABILITY = newValue;
-}
-
-void setSEARCHRADIUS(int newValue)
-{
-    SEARCHRADIUS = newValue;
 }
 
 
@@ -358,18 +353,17 @@ bool verificaSobreposicaoGeral (const T& novo,
 }
 
 void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
-                    std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
+                    std::vector<Obstacle>& obstaculos, std:: mt19937& rng,bool verificacC)
 {
     {
         int x = celula.getCoordenadaX();
         int y = celula.getCoordenadaY();
         
-        auto [nearestCTIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cT, SEARCHRADIUS);
+        auto [nearestCTIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cT, celula.getSearchRadius());
         bool isPursiung;
         int randomValue;
-        const bool verificacC = true;
         
-        if (nearestCTIndex != -1 and distanciaAteCancer <= SEARCHRADIUS)
+        if (nearestCTIndex != -1 and distanciaAteCancer <= celula.getSearchRadius())
         {
             // Achou alvo próximo
     
@@ -402,17 +396,16 @@ void moverCelulaRuim(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
 }
 
 void moverCelulaBoa(Cell& celula, std:: vector<Cell>&cT,std::vector<Cell>& cC,
-    std::vector<Obstacle>& obstaculos, std:: mt19937& rng)
+    std::vector<Obstacle>& obstaculos, std:: mt19937& rng,bool verificacC)
 {
     int x = celula.getCoordenadaX();
     int y = celula.getCoordenadaY();
     
-    auto [nearestCCIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, SEARCHRADIUS);
+    auto [nearestCCIndex, distanciaAteCancer] = encontrarAlvosMaisProximo(x, y, cC, celula.getSearchRadius());
     bool isPursiung;
     int randomValue;
-    const bool verificacC = false;
-    
-    if (nearestCCIndex != -1 and distanciaAteCancer <= SEARCHRADIUS)
+      
+    if (nearestCCIndex != -1 and distanciaAteCancer <= celula.getSearchRadius())
     {
         // Achou alvo próximo
 
@@ -571,13 +564,11 @@ const std::vector<Cell>&d,const std::vector<Obstacle>&b, int timeStep)
 }
 
 int runSimulationPaper(const int NUMSTEPS, std::vector<Cell>& cT, 
-std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName, std::mt19937& rng, bool write = true) 
+std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName, std::mt19937& rng,
+bool write,int sr_normal, int sr_cancer) 
 {
     int steps = 1; // Step counter
-    bool isPursuing;
-    // Search radius to find resources or cells
-    
-    // Initialize random number generator and Bernoulli distribution
+    bool isPursuing,verificacC;
 
     // Main simulation loop
     while (steps < NUMSTEPS) 
@@ -587,7 +578,8 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName
         {
             for (int i = cT.size() - 1; i >= 0; --i)
             {
-                moverCelulaBoa(cT[i], cT, cC, point, rng);
+                verificacC = false;
+                moverCelulaBoa(cT[i], cT, cC, point, rng,verificacC);
             }
         }
 
@@ -596,7 +588,8 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName
         {
             for (int i = cC.size() - 1; i >= 0; --i)
             {
-            moverCelulaRuim(cC[i], cT, cC, point, rng);
+            verificacC = true;
+            moverCelulaRuim(cC[i], cT, cC, point, rng,verificacC);
             }
         }
         if (write == true)
@@ -616,26 +609,23 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName
 }
 
 
-//19,46,4132088286
-//82,56,4132088349
-//15,35,1113190909
+//8,41,0,2241289420
+//12,35,0,2241289174
 int main() 
 {
     // Parâmetros do caso específico
-    int run = 82;
+    int run = 12;
     int numCT = 500;
-    int numcC = 500; // ajuste conforme o caso do .dat
-    int numPoint = 21; // idem
-    double ncNoise_ct = 0.05;
+    int numcC = 100; // ajuste conforme o caso do .dat
+    int numPoint = 0; // idem
+    double ncNoise_ct = 0.95;
     double ncNoise_cc = 0.95;
-    int SR_value = 50;
-    unsigned int seed_run =1053522277; // do .dat
+    unsigned int seed_run = 2241289174; // do .dat
 
     setCTPROBABILITY(ncNoise_ct);
     setCCPROBABILITY(ncNoise_cc);
-    setSEARCHRADIUS(SR_value);
-    int sr_cancer = 50;
-    int sr_normal = 50;
+    int sr_cancer = 45;
+    int sr_normal = 5;
 
     bool write = true;
     std::mt19937 rng_local(seed_run);
@@ -680,7 +670,7 @@ int main()
                                     "_TCT_" + std::to_string(ncNoise_ct) +
                                     "_SR_" + std::to_string(sr_normal)+"Run_"+ std:: to_string(run) + ".xyz";
 
-    int steps_local = runSimulationPaper(10000, cT, cC, point, trajectoryFileName,rng_local, true);
+    int steps_local = runSimulationPaper(10000, cT, cC, point, trajectoryFileName,rng_local, true,sr_normal,sr_cancer);
 
     std::cout << "Re-execução completa com " << steps_local << " passos." << "\n";
 
