@@ -3,6 +3,12 @@ import pandas as pd
 import pickle
 import hashlib
 
+
+
+
+
+
+
 def gerar_nome_cache(pasta, NE, TCC, TCT, O, NC, tipo_dado="csv"):
     """Gera nome de cache único com base nos parâmetros e na pasta."""
     hash_pasta = hashlib.md5(str(pasta).encode()).hexdigest()[:8]
@@ -74,11 +80,11 @@ def carregar_dataframes(
     cache_file = os.path.join(pasta, cache_name)
 
     if usar_cache and not forcar_recarregar and os.path.exists(cache_file):
-        print(f"✔️ Carregando do cache: {cache_file}")
+        print(f"Carregando do cache: {cache_file}")
         with open(cache_file, "rb") as f:
             return pickle.load(f)
 
-    print("📂 Lendo arquivos .dat...")
+    print("Lendo arquivos .dat...")
     dataframes = {}
 
     for sr_tcc in range(1, 51):
@@ -92,15 +98,15 @@ def carregar_dataframes(
                     chave = f"SR_TCC_{sr_tcc}_SR_TCT_{sr_tct}"
                     dataframes[chave] = df
                 except Exception as e:
-                    print(f"❌ Erro ao ler {nome_arquivo}: {e}")
+                    print(f" Erro ao ler {nome_arquivo}: {e}")
 
     if usar_cache:
         try:
             with open(cache_file, "wb") as f:
                 pickle.dump(dataframes, f)
-            print(f"💾 Cache salvo em: {cache_file}")
+            print(f"Cache salvo em: {cache_file}")
         except Exception as e:
-            print(f"⚠️ Não foi possível salvar o cache: {e}")
+            print(f" Não foi possível salvar o cache: {e}")
 
     return dataframes
 
@@ -121,7 +127,7 @@ def carregar_dataframes(
         with open(cache_file, "rb") as f:
             return pickle.load(f)
 
-    print("📂 Lendo arquivos .dat...")
+    print("Lendo arquivos .dat...")
     dataframes = {}
 
     for sr_tcc in range(1, 51):
@@ -135,14 +141,14 @@ def carregar_dataframes(
                     chave = f"SR_TCC_{sr_tcc}_SR_TCT_{sr_tct}"
                     dataframes[chave] = df
                 except Exception as e:
-                    print(f"❌ Erro ao ler {nome_arquivo}: {e}")
+                    print(f" Erro ao ler {nome_arquivo}: {e}")
 
     if usar_cache:
         try:
             with open(cache_file, "wb") as f:
                 pickle.dump(dataframes, f)
-            print(f"💾 Cache salvo em: {cache_file}")
+            print(f" Cache salvo em: {cache_file}")
         except Exception as e:
-            print(f"⚠️ Não foi possível salvar o cache: {e}")
+            print(f" Não foi possível salvar o cache: {e}")
 
     return dataframes

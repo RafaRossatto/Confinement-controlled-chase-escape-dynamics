@@ -33,7 +33,7 @@ def gerar_matriz_medias_steps(dfs, limite=1000, verbose=True):
                     print(f"⚠️ Coluna 'steps' não encontrada no DataFrame {chave}")
         except Exception as e:
             if verbose:
-                print(f"❌ Erro ao processar {chave}: {e}")
+                print(f"Erro ao processar {chave}: {e}")
 
     df_matriz = pd.DataFrame(
         matriz_medias,
@@ -46,10 +46,10 @@ def gerar_matriz_medias_steps(dfs, limite=1000, verbose=True):
     if len(valores_abaixo) > 0:
         max_abaixo = np.max(valores_abaixo)
         if verbose:
-            print(f"🔍 Maior valor abaixo de {limite}: {max_abaixo}")
+            print(f"Maior valor abaixo de {limite}: {max_abaixo}")
     else:
         max_abaixo = None
         if verbose:
-            print(f"⚠️ Nenhum valor abaixo de {limite} encontrado.")
+            print(f"Nenhum valor abaixo de {limite} encontrado.")
 
     return df_matriz, max_abaixo
