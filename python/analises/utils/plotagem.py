@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from utils.estatisticas import ajustar_tau # type: ignore
 
 def plotar_curvas_media_e_desvio(dataframes, chaves_escolhidas, titulo="Média das Presas Vivas por Configuração",
                                   salvar_pdf=False, nome_pdf="grafico.pdf", mostrar=False, valor_inicial=None):
@@ -36,8 +37,16 @@ def plotar_curvas_media_e_desvio(dataframes, chaves_escolhidas, titulo="Média d
                     passos = passos - intervalo
                     passos[0] = 0
 
-                plt.plot(passos, media, label=chave)
-                plt.fill_between(passos, media - desvio, media + desvio, alpha=0.3)
+                # Curva média e desvio padrão
+            plt.plot(passos, media, label=chave)
+            plt.fill_between(passos, media - desvio, media + desvio, alpha=0.3)
+
+            # 👉 Ajuste da curva média ao modelo NE * exp(-x / tau)
+            tau, erro_tau, r2 = ajustar_tau(media, passos, valor_inicial)
+            if tau is not None:
+                print(f"[{chave}] τ ajustado: {tau:.2f} ± {erro_tau:.2f}, R² = {r2:.4f}")
+                curva_fit = valor_inicial * np.exp(-passos / tau)
+                plt.plot(passos, curva_fit, '--', label=f'Fit {chave} (τ={tau:.1f})')
         else:
             print(f"[Aviso] Chave não encontrada: {chave}")
 
@@ -103,7 +112,7 @@ def gerar_heatmap_matriz_media(
         cmap='viridis',
         fmt='',
         linewidths=0.5,
-        cbar_kws={'label': 'Média de escapers'}
+        cbar_kws={'label': 'Steps'}
     )
 
     plt.title(titulo.format(limite=limite))

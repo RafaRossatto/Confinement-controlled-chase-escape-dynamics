@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+from scipy.optimize import curve_fit # type: ignore
+from scipy.stats import linregress # type: ignore
+
 
 def gerar_matriz_medias_steps(dfs, limite=1000, verbose=True):
     """
@@ -53,3 +56,41 @@ def gerar_matriz_medias_steps(dfs, limite=1000, verbose=True):
             print(f"Nenhum valor abaixo de {limite} encontrado.")
 
     return df_matriz, max_abaixo
+
+def modelo_exponencial(x, tau, NE):
+    """Modelo NE * exp(-x / tau), com NE fixo"""
+    return NE * np.exp(-x / tau)
+
+def ajustar_tau(curva_media: np.ndarray, passos: np.ndarray, NE: float):
+    """
+    Ajusta o parâmetro tau na curva NE * exp(-steps / tau).
+    
+    Parâmetros:
+    - curva_media: vetor com os valores médios da curva ao longo dos passos.
+    - passos: vetor com os valores do eixo x.
+    - NE: valor inicial dos escapers.
+    
+    Retorna:
+    - tau ajustado
+    - erro padrão da estimativa
+    - R² do ajuste
+    """
+    try:
+        # Ajuste do modelo
+        popt, pcov = curve_fit(lambda x, tau: modelo_exponencial(x, tau, NE),
+                               passos, curva_media, p0=(100.0), maxfev=5000)
+
+        tau_otimo = popt[0]
+        erro_tau = np.sqrt(np.diag(pcov))[0]
+
+        # Calcular R² do ajuste
+        ajuste = modelo_exponencial(passos, tau_otimo, NE)
+        ss_res = np.sum((curva_media - ajuste) ** 2)
+        ss_tot = np.sum((curva_media - np.mean(curva_media)) ** 2)
+        r2 = 1 - (ss_res / ss_tot)
+
+        return tau_otimo, erro_tau, r2
+
+    except Exception as e:
+        print(f"[Erro no ajuste exponencial]: {e}")
+        return None, None, None
