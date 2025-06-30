@@ -35,8 +35,6 @@ int verificacC, bool isPursuing,std::mt19937& rng,Cell& celula)
     int maxAttempts = 100;
     int attemptCount = 0;
 
-    while (attemptCount < maxAttempts)
-    {
         newX = x;
         newY = y;
 
@@ -172,22 +170,8 @@ int verificacC, bool isPursuing,std::mt19937& rng,Cell& celula)
         y = newY;
         return;
     }
-    //Essa parte é nova
-        //Essa parte é velha
-    /* 
-    if (!lattice.isOccupied(newX, newY, celulas, cC, obstaculos, verificacC))
-        {
-            x = newX;
-            y = newY;
-            return;
-        }
-        //Essa parte é velha
-      */
-	else
-        {
-            attemptCount++;
-        }
-    }
+    
+    
     x = prevX;
     y = prevY;
 }
@@ -314,61 +298,6 @@ std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng)
 }
 
 
-/*
-
-
-void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
-    double ncNoise_ct, double ncNoise_cc,
-    const std::string& fileName, const std::vector<Obstacle>& point,int sr_normal,int sr_cancer)
-{
-    int remaining_cC;
-    std::ofstream outputFile(fileName);
-    if (!outputFile.is_open()) 
-    {
-        logError("Erro ao abrir o arquivo " + fileName);
-        std::cin.get();
-        return;
-    }
-   	outputFile << "run,steps,escapers,seed\n";
-	int runSorteada = std::uniform_int_distribution<int>(1, count)(std::mt19937(GLOBAL_SEED + numPoint + numcC));
-    #pragma omp parallel for schedule(dynamic)
-    for (int run = 1; run <= count; ++run) 
-    {
-        unsigned int seed_run = GLOBAL_SEED + 10* sr_cancer + 10 * sr_normal + run + 1000 * numcC + 100000 * numPoint;
-        std::mt19937 rng_local(seed_run);
-        std::vector<Cell> cT_local;
-        std::vector<Cell> cC_local;
-        std::vector<Obstacle> point_local = point;
-
-        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local,sr_normal,sr_cancer)) 
-                                {
-                                    #pragma omp critical
-                                    logError("Failed to place the objects in the execution " + std::to_string(run));
-                                    std::cin.get();
-                                    continue;
-                                }
-
-        //int steps_local = runSimulationPaper(lattice,10000, cT_local, cC_local, point_local, rng_local);
-        auto [steps_local, remaining_cC] = runSimulationPaper(lattice, 1000, cT_local, cC_local, point_local, rng_local);
-
-        #pragma omp critical
-        {
-            outputFile << run << "," << steps_local << "," << remaining_cC << "," << seed_run << "\n";
-        }
-	if (run == runSorteada) {
-            std::ofstream evoFile(fileName + "_presas_por_passo.dat");
-            evoFile << "passo,presas_vivas\n";
-            for (size_t i = 0; i < presasPorPasso.size(); ++i) {
-                evoFile << (i * intervalo) << "," << presasPorPasso[i] << "\n";
-            }
-            evoFile.close();
-        }
-    }
-    outputFile.close();
-    logInfo("Resultados salvos no arquivo " + fileName);
-}
-*/
-
 void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc,
     const std::string& fileName, const std::vector<Obstacle>& point,int sr_normal,int sr_cancer)
@@ -386,7 +315,7 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
     // Sorteia uma run para salvar evolução temporal
 //int runSorteada = std::uniform_int_distribution<int>(1, count)(std::mt19937(GLOBAL_SEED + numPoint + numcC));
 	std::mt19937 rng_run_selector(GLOBAL_SEED + numPoint + numcC + 99999);
-std::uniform_int_distribution<int> dist_run(1, count);
+    std::uniform_int_distribution<int> dist_run(1, count);
 int runSorteada = dist_run(rng_run_selector);
 
     #pragma omp parallel for schedule(dynamic)
@@ -406,7 +335,7 @@ int runSorteada = dist_run(rng_run_selector);
         }
 
         std::vector<int> presasPorPasso;
-        const int intervalo = 10;
+        const int intervalo = 1;
 
         int steps = 1;
         bool isPursuing, verificacC;
@@ -427,7 +356,7 @@ int runSorteada = dist_run(rng_run_selector);
             if (cC_local.empty()) break;
 
             if (steps % intervalo == 0)
-	    {
+	        {
                 presasPorPasso.push_back(static_cast<int>(cC_local.size()));
             }
             steps++;
@@ -458,22 +387,24 @@ int main()
     //std::vector<int> numcC_values = {1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 500, 1000};
     std::vector<int> numcC_values = {500};
     //std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};
-    std::vector<int> numPoint_values = {0,51};
-    std::vector<double> numNoise_ct = {0.95};
-    std::vector<double> numNoise_cc = {0.95};
+    std::vector<int> numPoint_values = {0};
+    std::vector<double> numNoise_ct = {1.0};
+    std::vector<double> numNoise_cc = {1.0};
 
     std::vector<Cell> cT;
     std::vector<Cell> cC;
     std::vector<Obstacle> point;
     std::string line;
     CellLattice lattice(WIDTH,HEIGHT);
+    int sr_normal = 50;
+    int sr_cancer = 50;
 
     numCT = 500;
     count = 100;
 
-    for (int sr_normal = 1; sr_normal <= 50; ++sr_normal) 
+    for (sr_normal; sr_normal <= 50; ++sr_normal) 
     {
-        for (int sr_cancer = 1; sr_cancer <= 50; ++sr_cancer)
+        for (sr_cancer ; sr_cancer <= 50; ++sr_cancer)
         {
 
         for (double ncNoise_ct : numNoise_ct) 
