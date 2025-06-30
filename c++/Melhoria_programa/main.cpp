@@ -456,7 +456,7 @@ int main()
     int count, steps, numCT, numcC, numPoint, x, y;
 
     //std::vector<int> numcC_values = {1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 500, 1000};
-    std::vector<int> numcC_values = {100};
+    std::vector<int> numcC_values = {500};
     //std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};
     std::vector<int> numPoint_values = {0,51};
     std::vector<double> numNoise_ct = {0.95};
