@@ -1,4 +1,5 @@
 #include "cell.h"
+#include <algorithm>
 
 // Construtor sem lista de inicialização
 Cell::Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY) 
@@ -37,6 +38,7 @@ void Cell::changePosition(int newX, int newY)
     m_coordenadaY = newY;
 }
 
+/*
 std::pair<int, int> Cell::findNearestTarget(const std::vector<Cell>& targets,
     int searchRadius,
     const CellLattice& lattice) const
@@ -62,6 +64,46 @@ nearestIndex = i;
 
 return {nearestIndex, minDistance};
 }
+
+*/
+
+std::vector<std::pair<int, int>> Cell::findNearestTarget(
+    const std::vector<Cell>& targets,
+    int searchRadius,
+    const CellLattice& /* lattice (não usado mais) */,
+    const std::vector<std::string>& tipos_alvo) const
+{
+    int x = m_coordenadaX;
+    int y = m_coordenadaY;
+
+    for (int raio = 1; raio <= searchRadius; ++raio) {
+        std::vector<std::pair<int, int>> encontrados;
+
+        for (const auto& alvo : targets) {
+            if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end()) {
+                continue;
+            }
+
+            int dx = std::abs(alvo.getCoordenadaX() - x);
+            int dy = std::abs(alvo.getCoordenadaY() - y);
+
+            if (dx + dy == raio) { // está exatamente na borda do raio atual
+                encontrados.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
+            }
+        }
+
+        if (!encontrados.empty()) {
+            return encontrados;
+        }
+    }
+
+    return {}; // nenhum alvo encontrado
+}
+
+
+
+
+
 
 void Cell::randonWalk(int& x, int& y,int move)
 {

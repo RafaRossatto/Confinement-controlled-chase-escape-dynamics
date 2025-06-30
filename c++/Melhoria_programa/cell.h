@@ -18,8 +18,15 @@ class Cell
     
         Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY);
 
+
         std::pair<int, int> findNearestTarget(const std::vector<Cell>& targets,
             int searchRadius, const CellLattice& lattice) const;
+
+        std::vector<std::pair<int, int>> Cell::findNearestTarget(
+    const std::vector<Cell>& targets,
+    int searchRadius,
+    const CellLattice& lattice,
+    const std::vector<std::string>& tipos_alvo) const;
 
         void randonWalk(int& x, int& y,int move);
         
