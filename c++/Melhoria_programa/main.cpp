@@ -218,6 +218,16 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
     {
     celula.changePosition(newX, newY);
     }
+
+    // Verifica se capturou uma célula ruim (presa)
+    for (int i = cC.size() - 1; i >= 0; --i) 
+    {
+    if (cC[i].getCoordenadaX() == newX && cC[i].getCoordenadaY() == newY) 
+    {
+        cC.erase(cC.begin() + i);
+        break;
+    }
+    }
 }
 
 
@@ -299,7 +309,7 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
         }
 
         std::vector<int> presasPorPasso;
-        const int intervalo = 1;
+        const int intervalo = 100000;
 
         int steps = 1;
         bool verificacC;
@@ -319,25 +329,31 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
             }
             if (cC_local.empty()) break;
 
+            
             if (steps % intervalo == 0)
 	        {
                 presasPorPasso.push_back(static_cast<int>(cC_local.size()));
-            }
+            }                
+
             steps++;
         }
 
         	
 	#pragma omp critical
-	{
-    		outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
-		std::ofstream evoFile(fileName + "_run_" + std::to_string(run) + "_presas_por_passo.csv");
+	
+    {
+    	outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
+		/*
+        std::ofstream evoFile(fileName + "_run_" + std::to_string(run) + "_presas_por_passo.csv");
     		evoFile << "passo,presas_vivas\n";
     		for (size_t i = 0; i < presasPorPasso.size(); ++i) 
-		{
+		    {
         		evoFile << (i * intervalo) << "," << presasPorPasso[i] << "\n";
     		}
     	evoFile.close();
-	}
+	    */
+        }
+        
     }
     outputFile.close();
     logInfo("Resultados salvos no arquivo " + fileName);
@@ -349,12 +365,12 @@ int main()
     int count, numCT, numcC, numPoint;
 
     //std::vector<int> numcC_values = {1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 500, 1000};
-    std::vector<int> numcC_values = {5,10,25,50,100,250,500,1000,5000};
-    std::vector<int> numcT_values = {10,25,50};
+    std::vector<int> numcT_values = {5,10,25,50,100,250,500,1000,5000};
+    std::vector<int> numcC_values = {10,25,50};
     //std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};
     std::vector<int> numPoint_values = {0};
-    std::vector<double> numNoise_ct = {0.99};
-    std::vector<double> numNoise_cc = {0.99};
+    std::vector<double> numNoise_ct = {1.00};
+    std::vector<double> numNoise_cc = {1.0};
 
     std::vector<Cell> cT;
     std::vector<Cell> cC;

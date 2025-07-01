@@ -3,7 +3,7 @@ TARGET = a.out
 
 # Compilador
 CXX = g++
-CXXFLAGS = -O2 -Wall -std=c++17 -fopenmp  # <-- adicionada flag -fopenmp
+CXXFLAGS = -O2 -Wall -std=c++17  # <- -fopenmp REMOVIDO
 
 # Fontes
 SRC = main.cpp cell.cpp cell_lattice.cpp obstacle.cpp

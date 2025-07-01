@@ -218,6 +218,16 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
     {
     celula.changePosition(newX, newY);
     }
+
+    // Verifica se capturou uma célula ruim (presa)
+    for (int i = cC.size() - 1; i >= 0; --i) 
+    {
+    if (cC[i].getCoordenadaX() == newX && cC[i].getCoordenadaY() == newY) 
+    {
+        cC.erase(cC.begin() + i);
+        break;
+    }
+    }
 }
 
 
@@ -272,167 +282,12 @@ const std::vector<Cell>&d,const std::vector<Obstacle>&b, int timeStep)
     file.close();
 }
 
-
-
-
-
-
-
-
-
-
-
-void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
-    double ncNoise_ct, double ncNoise_cc,
-    const std::string& fileName, const std::vector<Obstacle>& point,int sr_normal,int sr_cancer)
-{
-    //int remaining_cC;
-    std::ofstream outputFile(fileName);
-    if (!outputFile.is_open()) 
-    {
-        logError("Erro ao abrir o arquivo " + fileName);
-        std::cin.get();
-        return;
-    }
-    outputFile << "run,steps,escapers,seed\n";
-
-    // Sorteia uma run para salvar evolução temporal
-//int runSorteada = std::uniform_int_distribution<int>(1, count)(std::mt19937(GLOBAL_SEED + numPoint + numcC));
-	std::mt19937 rng_run_selector(GLOBAL_SEED + numPoint + numcC + 99999);
-    std::uniform_int_distribution<int> dist_run(1, count);
-    //int runSorteada = dist_run(rng_run_selector);
-
-    #pragma omp parallel for schedule(dynamic)
-    for (int run = 1; run <= count; ++run) 
-    {
-        unsigned int seed_run = GLOBAL_SEED + 10* sr_cancer + 10 * sr_normal + run + 1000 * numcC + 100000 * numPoint;
-        std::mt19937 rng_local(seed_run);
-        std::vector<Cell> cT_local;
-        std::vector<Cell> cC_local;
-        std::vector<Obstacle> point_local = point;
-
-        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local,sr_normal,sr_cancer)) 
-        {
-            #pragma omp critical
-            logError("Failed to place the objects in the execution " + std::to_string(run));
-            continue;
-        }
-
-        std::vector<int> presasPorPasso;
-        const int intervalo = 1;
-
-        int steps = 1;
-        bool verificacC;
-        while (steps < 10000) 
-        {
-            if (!cT_local.empty()) {
-                for (int i = cT_local.size() - 1; i >= 0; --i) {
-                    verificacC = false;
-                    moverCelulaBoa(lattice,cT_local[i], cT_local, cC_local, point_local, rng_local,verificacC);
-                }
-            }
-            if (!cC_local.empty()) {
-                for (int i = cC_local.size() - 1; i >= 0; --i) {
-                    verificacC = true;
-                    moverCelulaRuim(lattice,cC_local[i], cT_local, cC_local, point_local, rng_local,verificacC);
-                }
-            }
-            if (cC_local.empty()) break;
-
-            if (steps % intervalo == 0)
-	        {
-                presasPorPasso.push_back(static_cast<int>(cC_local.size()));
-            }
-            steps++;
-        }
-
-        	
-	#pragma omp critical
-	{
-    		outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
-		std::ofstream evoFile(fileName + "_run_" + std::to_string(run) + "_presas_por_passo.csv");
-    		evoFile << "passo,presas_vivas\n";
-    		for (size_t i = 0; i < presasPorPasso.size(); ++i) 
-		{
-        		evoFile << (i * intervalo) << "," << presasPorPasso[i] << "\n";
-    		}
-    	evoFile.close();
-	}
-    }
-    outputFile.close();
-    logInfo("Resultados salvos no arquivo " + fileName);
-}
-
-
-
-
-
-
-
-
-
-std::pair<int, int> runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
-    std::vector<Cell>& cC, std::vector<Obstacle>& point, std::mt19937& rng) 
-    {
-        int steps = 1; // Step counter
-        bool verificacC;
-        
-        std::vector<int> presasPorPasso;
-        //const int intervalo = 50;
-        while (steps < NUMSTEPS) 
-        {   
-            // Process cells of type T
-            if (!cT.empty())
-            {
-                for (int i = cT.size() - 1; i >= 0; --i)
-                {
-                    verificacC = false;
-                    moverCelulaBoa(lattice,cT[i], cT, cC, point, rng,verificacC);
-                }
-            }
-            // Process cancer cells
-            if (!cC.empty())
-            {
-                for (int i = cC.size() - 1; i >= 0; --i)
-                {
-                    verificacC = true;
-                    moverCelulaRuim(lattice,cC[i], cT, cC, point, rng,verificacC);
-                }
-            }
-    
-            if (cC.empty()) 
-            {
-                break;
-            }
-            steps++; // Increment step count
-        }
-        return {steps, static_cast<int>(cC.size())};
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//velha
-/*
-int runSimulationPaper(const int NUMSTEPS, std::vector<Cell>& cT, 
+int runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
 std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName, std::mt19937& rng,
 bool write,int sr_normal, int sr_cancer) 
 {
     int steps = 1; // Step counter
-    bool isPursuing,verificacC;
+    bool verificacC;
 
     // Main simulation loop
     while (steps < NUMSTEPS) 
@@ -443,7 +298,7 @@ bool write,int sr_normal, int sr_cancer)
             for (int i = cT.size() - 1; i >= 0; --i)
             {
                 verificacC = false;
-                moverCelulaBoa(cT[i], cT, cC, point, rng,verificacC);
+                moverCelulaBoa(lattice,cT[i], cT, cC, point, rng,verificacC);
             }
         }
 
@@ -453,7 +308,7 @@ bool write,int sr_normal, int sr_cancer)
             for (int i = cC.size() - 1; i >= 0; --i)
             {
             verificacC = true;
-            moverCelulaRuim(cC[i], cT, cC, point, rng,verificacC);
+            moverCelulaRuim(lattice,cC[i], cT, cC, point, rng,verificacC);
             }
         }
         if (write == true)
@@ -472,27 +327,27 @@ bool write,int sr_normal, int sr_cancer)
     return steps;
 }
 
-*/
-//8,41,0,2241289420
-//12,35,0,2241289174
-//12,280,0,2709020504
+
+//35,43,0,4117423416
+//13,3873,0,4117463394
 int main() 
 {
     // Parâmetros do caso específico
-    int run = 12;
-    int numCT = 500;
-    int numcC = 100; // ajuste conforme o caso do .dat
+    int run = 13;
+    int numCT = 10;
+    int numcC = 50; // ajuste conforme o caso do .dat
     int numPoint = 0; // idem
-    double ncNoise_ct = 0.05;
-    double ncNoise_cc = 0.05;
-    unsigned int seed_run = 2709020504; // do .dat
+    double ncNoise_ct = 1.00;
+    double ncNoise_cc = 1.00;
+    unsigned int seed_run = 4117463415; // do .dat
+    CellLattice lattice(WIDTH, HEIGHT);
 
     setCTPROBABILITY(ncNoise_ct);
     setCCPROBABILITY(ncNoise_cc);
     int sr_cancer = 50;
-    int sr_normal = 5;
+    int sr_normal = 50;
 
-    bool write = true;
+    bool write = false;
     std::mt19937 rng_local(seed_run);
 
 
@@ -519,23 +374,22 @@ int main()
             }
             inputFile.close();
         }
-    // Posiciona todos os elementos
-    if (!posicionarObjetos(point, cT, cC, numPoint, numCT,
-         numcC, 100, 100,rng_local,sr_normal,sr_cancer)) 
-    {
-        std::cerr << "Erro ao posicionar objetos para run " << run << "\n";
-        return 1;
-    }
+    if (!lattice.placeObjects(point, cT, cC, numPoint, 
+        numCT, numcC, rng_local,sr_normal,sr_cancer)) 
+        {
+            std::cerr << "Erro ao posicionar objetos para run " << run << "\n";
+            return 1;
+        }
 
 
-    std::string trajectoryFileName = "Run_Trajectory_NH_500_NE_" + std::to_string(numcC) +
+    std::string trajectoryFileName = "Run_Trajectory_NH_"+std::to_string(numCT)+"_NE_" + std::to_string(numcC) +
                                     "_O_" + std::to_string(numPoint) +
                                     "_TCC_" + std::to_string(ncNoise_cc) +
                                     "_SR_" + std::to_string(sr_cancer)+
                                     "_TCT_" + std::to_string(ncNoise_ct) +
                                     "_SR_" + std::to_string(sr_normal)+"Run_"+ std:: to_string(run) + ".xyz";
 
-    int steps_local = runSimulationPaper(10000, cT, cC, point, trajectoryFileName,rng_local, true,sr_normal,sr_cancer);
+    int steps_local = runSimulationPaper(lattice,10000, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer);
 
     std::cout << "Re-execução completa com " << steps_local << " passos." << "\n";
 
