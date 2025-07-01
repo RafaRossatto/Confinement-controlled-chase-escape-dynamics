@@ -1,4 +1,5 @@
 #include "cell.h"
+#include "cell_lattice.h"
 #include <algorithm>
 
 // Construtor sem lista de inicialização
@@ -68,10 +69,10 @@ return {nearestIndex, minDistance};
 */
 
 std::vector<std::pair<int, int>> Cell::findNearestTarget(
-    const std::vector<Cell>& targets,
-    int searchRadius,
-    const CellLattice& /* lattice (não usado mais) */,
-    const std::vector<std::string>& tipos_alvo) const
+        const std::vector<Cell>& targets,
+        int searchRadius,
+        const CellLattice& lattice,
+        const std::vector<std::string>& tipos_alvo) const
 {
     int x = m_coordenadaX;
     int y = m_coordenadaY;
@@ -84,10 +85,10 @@ std::vector<std::pair<int, int>> Cell::findNearestTarget(
                 continue;
             }
 
-            int dx = std::abs(alvo.getCoordenadaX() - x);
-            int dy = std::abs(alvo.getCoordenadaY() - y);
-
-            if (dx + dy == raio) { // está exatamente na borda do raio atual
+            int dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
+            
+            if (dist == raio)
+            { // está exatamente na borda do raio atual
                 encontrados.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
             }
         }

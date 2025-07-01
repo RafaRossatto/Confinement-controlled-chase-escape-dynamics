@@ -1,4 +1,3 @@
-#pragma once
 #include <string>
 class Obstacle 
 {
@@ -10,7 +9,7 @@ class Obstacle
 
     public:
     
-        Obstacle(const std::string& tipo, int id, int coordenadaX, int coordenadaY);
+        Obstacle(const std::string& tipo, int numero, int coordenadaX, int coordenadaY);
     
 
     // Getters

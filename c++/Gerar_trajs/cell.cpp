@@ -1,4 +1,6 @@
 #include "cell.h"
+#include "cell_lattice.h"
+#include <algorithm>
 
 // Construtor sem lista de inicialização
 Cell::Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY) 
@@ -7,9 +9,6 @@ Cell::Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY
     m_numero = numero;
     m_coordenadaX = coordenadaX;
     m_coordenadaY = coordenadaY;
-    m_lifeCycle = 0;
-    m_division = 0;
-    m_hurt = false;
 }
 
 // Getters
@@ -23,11 +22,6 @@ int Cell::getNumero() const
     return m_numero;
 }
 
-bool Cell::getHurt() const
-{
-    return m_hurt;
-}
-
 int Cell::getCoordenadaX() const 
 {
     return m_coordenadaX;
@@ -38,26 +32,6 @@ int Cell::getCoordenadaY() const
     return m_coordenadaY;
 }
 
-int Cell::getEnergy() const 
-{
-    return m_energy;
-}
-
-int Cell:: getMinEnergy() const
-{
-    return m_minEnergy;
-}
-
-int Cell:: getLifeCycle() const
-{
-    return m_lifeCycle;
-}
-
-int Cell:: getDivision() const
-{
-    return m_division;
-}
-
 // Método para alterar a posição
 void Cell::changePosition(int newX, int newY) 
 {
@@ -65,36 +39,93 @@ void Cell::changePosition(int newX, int newY)
     m_coordenadaY = newY;
 }
 
-void Cell:: decrementEnergy() 
-    {
-        m_energy--;
+/*
+std::pair<int, int> Cell::findNearestTarget(const std::vector<Cell>& targets,
+    int searchRadius,
+    const CellLattice& lattice) const
+{
+int nearestIndex = -1;
+int minDistance = std::numeric_limits<int>::max();
+
+for (int radius : RAIOS_PROGRESSIVOS) {
+if (radius > searchRadius) break;
+
+for (int i = 0; i < targets.size(); ++i) {
+int distance = lattice.calculateDistance(this->getCoordenadaX(),
+             this->getCoordenadaY(),
+             targets[i].getCoordenadaX(),
+             targets[i].getCoordenadaY());
+
+if (distance <= radius && distance < minDistance) {
+minDistance = distance;
+nearestIndex = i;
+}
+}
+}
+
+return {nearestIndex, minDistance};
+}
+
+*/
+
+std::vector<std::pair<int, int>> Cell::findNearestTarget(
+        const std::vector<Cell>& targets,
+        int searchRadius,
+        const CellLattice& lattice,
+        const std::vector<std::string>& tipos_alvo) const
+{
+    int x = m_coordenadaX;
+    int y = m_coordenadaY;
+
+    for (int raio = 1; raio <= searchRadius; ++raio) {
+        std::vector<std::pair<int, int>> encontrados;
+
+        for (const auto& alvo : targets) {
+            if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end()) {
+                continue;
+            }
+
+            int dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
+            
+            if (dist == raio)
+            { // está exatamente na borda do raio atual
+                encontrados.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
+            }
+        }
+
+        if (!encontrados.empty()) {
+            return encontrados;
+        }
     }
 
-void Cell:: increaseEnergy(int amount)     
-{
-        m_energy += amount;
-}
-void Cell:: increaseLifeCycle()
-{
-    m_lifeCycle++;
-
+    return {}; // nenhum alvo encontrado
 }
 
-void Cell:: chanceEnergy(int amount)
-{
-    m_energy = m_energy/amount;
 
+
+
+
+
+void Cell::randonWalk(int& x, int& y,int move)
+{
+    switch (move) 
+    {
+        case NORTH:
+            y = (y+1)%HEIGHT;
+            break;
+        
+        case EAST:
+            x=(x+1)% WIDTH;
+            break;
+        case SOUTH:
+            y = (y - 1 + HEIGHT) % HEIGHT;
+            break;
+        case WEST:
+            x = (x - 1 + WIDTH) % WIDTH;
+            break;
+    }
 }
 
-void  Cell:: increaseDivision()
-{
-    m_division++;
-}
-
-void Cell:: cellHurt()
-{
-    m_hurt = true;
-}
 void Cell::setSearchRadius(int sr) {
     search_radius = sr;
 }
