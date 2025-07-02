@@ -40,7 +40,7 @@ void moverCelulaRuim(CellLattice& lattice, Cell& celula,
     celulas.insert(celulas.end(), cC.begin(), cC.end());
 
     // Busca caçadores no raio de procura
-    std::vector<std::string> tipos = {"O"};
+    std::vector<std::string> tipos = {"N"};
     auto alvos = celula.findNearestTarget(celulas, lattice, tipos);
 
     if (!alvos.empty()) 
@@ -137,13 +137,13 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
                 if (agente.getCoordenadaX() == ax && agente.getCoordenadaY() == ay) 
                 {
                     int dist = lattice.calculateDistance(x, y, ax, ay);
-                    if (agente.getTipo() == "N" && dist < menorDistPresa) 
+                    if (agente.getTipo() == "O" && dist < menorDistPresa) 
                     {
                         menorDistPresa = dist;
                         posPresa = {ax, ay};
                         encontrouPresa = true;
                     }
-                    else if (agente.getTipo() == "O" && dist < menorDistCacador) 
+                    else if (agente.getTipo() == "N" && dist < menorDistCacador) 
                     {
                         menorDistCacador = dist;
                         posCacador = {ax, ay};
