@@ -19,7 +19,7 @@ const double CAPTUREPROBABILITY = 1.00;
 
 const std::vector<int> RAIOS_PROGRESSIVOS = [](){
     std::vector<int> r;
-    for (int i = 1; i <= 50; ++i)
+    for (int i = 1; i <= 71; ++i)
         r.push_back(i);
     return r;
 }();
