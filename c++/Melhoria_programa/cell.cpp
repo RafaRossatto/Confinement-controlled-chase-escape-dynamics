@@ -66,7 +66,7 @@ nearestIndex = i;
 return {nearestIndex, minDistance};
 }
 
-*/
+
 
 std::vector<std::pair<int, int>> Cell::findNearestTarget(
         const std::vector<Cell>& targets,
@@ -87,7 +87,7 @@ std::vector<std::pair<int, int>> Cell::findNearestTarget(
 
             int dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
             
-            if (dist == raio)
+            if (dist <= raio)
             { // está exatamente na borda do raio atual
                 encontrados.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
             }
@@ -100,9 +100,37 @@ std::vector<std::pair<int, int>> Cell::findNearestTarget(
 
     return {}; // nenhum alvo encontrado
 }
+*/
 
 
+std::vector<std::pair<int, int>> Cell::findNearestTarget(
+    const std::vector<Cell>& targets,
+    const CellLattice& lattice,
+    const std::vector<std::string>& tipos_alvo) const
+{
+    int x = m_coordenadaX;
+    int y = m_coordenadaY;
 
+    double menorDist = std::numeric_limits<double>::max();
+    std::vector<std::pair<int, int>> candidatos;
+
+    for (const auto& alvo : targets) {
+        if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end())
+            continue;
+
+        double dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
+
+        if (dist < menorDist) {
+            menorDist = dist;
+            candidatos.clear();
+            candidatos.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
+        } else if (std::abs(dist - menorDist) < 1e-6) {
+            candidatos.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
+        }
+    }
+
+    return candidatos;
+}
 
 
 

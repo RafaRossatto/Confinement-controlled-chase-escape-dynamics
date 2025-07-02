@@ -21,7 +21,6 @@ class Cell
 
         std::vector<std::pair<int, int>> findNearestTarget(
             const std::vector<Cell>& targets,
-            int searchRadius,
             const CellLattice& lattice,
             const std::vector<std::string>& tipos_alvo) const;
         

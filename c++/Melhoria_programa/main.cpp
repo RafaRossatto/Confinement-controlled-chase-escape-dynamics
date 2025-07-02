@@ -13,8 +13,8 @@ std::random_device rd;
 unsigned int GLOBAL_SEED = rd();
 
 //int SEARCHRADIUS = 40; // raio de procura.
-double CTPROBABILITY = 0.50; // probabilidade de capturar ou procurar comida
-double CCPROBABILITY = 0.50; // probabilidade de escapar ou procurar comida
+double CTPROBABILITY = 1.00; // probabilidade de capturar ou procurar comida
+double CCPROBABILITY = 1.00; // probabilidade de escapar ou procurar comida
 
 void setCTPROBABILITY(double newValue)
 {
@@ -40,8 +40,8 @@ void moverCelulaRuim(CellLattice& lattice, Cell& celula,
     celulas.insert(celulas.end(), cC.begin(), cC.end());
 
     // Busca caçadores no raio de procura
-    std::vector<std::string> tipos = {"C"};
-    auto alvos = celula.findNearestTarget(celulas, celula.getSearchRadius(), lattice, tipos);
+    std::vector<std::string> tipos = {"O"};
+    auto alvos = celula.findNearestTarget(celulas, lattice, tipos);
 
     if (!alvos.empty()) 
     {
@@ -122,7 +122,7 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
         int raio = celula.getSearchRadius();
 
         // Busca todos os alvos visíveis
-        auto alvos = celula.findNearestTarget(celulas, raio, lattice, {"N", "C"});
+        auto alvos = celula.findNearestTarget(celulas, lattice, {"N", "O"});
 
         // Inicializa variáveis para armazenar o alvo mais próximo de cada tipo
         int menorDistPresa = std::numeric_limits<int>::max();
@@ -143,7 +143,7 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
                         posPresa = {ax, ay};
                         encontrouPresa = true;
                     }
-                    else if (agente.getTipo() == "C" && dist < menorDistCacador) 
+                    else if (agente.getTipo() == "O" && dist < menorDistCacador) 
                     {
                         menorDistCacador = dist;
                         posCacador = {ax, ay};
@@ -313,7 +313,7 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
 
         int steps = 1;
         bool verificacC;
-        while (steps < 10000) 
+        while (steps < 50000) 
         {
             if (!cT_local.empty()) {
                 for (int i = cT_local.size() - 1; i >= 0; --i) {
@@ -369,7 +369,7 @@ int main()
     std::vector<int> numcC_values = {10,25,50};
     //std::vector<int> numPoint_values = {0, 2, 3, 5, 6, 11, 21, 26, 51};
     std::vector<int> numPoint_values = {0};
-    std::vector<double> numNoise_ct = {1.00};
+    std::vector<double> numNoise_ct = {0.00};
     std::vector<double> numNoise_cc = {1.0};
 
     std::vector<Cell> cT;
@@ -377,8 +377,8 @@ int main()
     std::vector<Obstacle> point;
     std::string line;
     CellLattice lattice(WIDTH,HEIGHT);
-    int sr_normal = 50;
-    int sr_cancer = 50;
+    int sr_normal = 100;
+    int sr_cancer = 100;
 
     count = 100;
     for (int ncT_value : numcT_values) 
