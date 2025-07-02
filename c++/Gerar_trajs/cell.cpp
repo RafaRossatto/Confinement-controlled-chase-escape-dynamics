@@ -68,39 +68,39 @@ return {nearestIndex, minDistance};
 
 */
 
-std::vector<std::pair<int, int>> Cell::findNearestTarget(
-        const std::vector<Cell>& targets,
-        int searchRadius,
-        const CellLattice& lattice,
-        const std::vector<std::string>& tipos_alvo) const
+std::pair<int, int> Cell::findNearestTarget(
+    const std::vector<Cell>& targets,
+    const CellLattice& lattice,
+    const std::vector<std::string>& tipos_alvo,
+    std::mt19937& rng) const
 {
     int x = m_coordenadaX;
     int y = m_coordenadaY;
 
-    for (int raio = 1; raio <= searchRadius; ++raio) {
-        std::vector<std::pair<int, int>> encontrados;
+    double minDist = std::numeric_limits<double>::max();
+    std::vector<std::pair<int, int>> candidatos;
 
-        for (const auto& alvo : targets) {
-            if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end()) {
-                continue;
-            }
+    for (const auto& alvo : targets) {
+        if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end())
+            continue;
 
-            int dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
-            
-            if (dist == raio)
-            { // está exatamente na borda do raio atual
-                encontrados.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
-            }
-        }
+        double dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
 
-        if (!encontrados.empty()) {
-            return encontrados;
+        if (dist < minDist) {
+            minDist = dist;
+            candidatos = {{alvo.getCoordenadaX(), alvo.getCoordenadaY()}};
+        } else if (std::abs(dist - minDist) < 1e-6) {
+            candidatos.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
         }
     }
 
-    return {}; // nenhum alvo encontrado
-}
+    if (!candidatos.empty()) {
+        std::uniform_int_distribution<size_t> distIndex(0, candidatos.size() - 1);
+        return candidatos[distIndex(rng)];
+    }
 
+    return {-1, -1};
+}
 
 
 

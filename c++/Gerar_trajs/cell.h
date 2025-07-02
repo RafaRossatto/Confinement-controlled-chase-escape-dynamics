@@ -3,6 +3,7 @@
 #include <string>
 #include "cell_lattice.h"
 #include <limits>
+#include <random>
 class CellLattice;
 
 class Cell 
@@ -19,11 +20,10 @@ class Cell
         Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY);
 
 
-        std::vector<std::pair<int, int>> findNearestTarget(
-            const std::vector<Cell>& targets,
-            int searchRadius,
+        std::pair<int, int> findNearestTarget(const std::vector<Cell>& targets,
             const CellLattice& lattice,
-            const std::vector<std::string>& tipos_alvo) const;
+            const std::vector<std::string>& tipos_alvo,
+            std::mt19937& rng) const;
         
 
         void randonWalk(int& x, int& y,int move);

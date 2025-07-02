@@ -27,78 +27,69 @@ void setCCPROBABILITY(double newValue)
 }
 
 void moverCelulaRuim(CellLattice& lattice, Cell& celula,
-                     std::vector<Cell>& cT, std::vector<Cell>& cC,
-                     std::vector<Obstacle>& obstaculos,
-                     std::mt19937& rng, bool verificacC)
-
+    std::vector<Cell>& cT, std::vector<Cell>& cC,
+    std::vector<Obstacle>& obstaculos,
+    std::mt19937& rng, bool verificacC)
 {
-    int x = celula.getCoordenadaX();
-    int y = celula.getCoordenadaY();
-    int newX = x, newY = y;
-    std::vector<Cell> celulas;
-    celulas.insert(celulas.end(), cT.begin(), cT.end());
-    celulas.insert(celulas.end(), cC.begin(), cC.end());
+int x = celula.getCoordenadaX();
+int y = celula.getCoordenadaY();
+int newX = x, newY = y;
 
-    // Busca caçadores no raio de procura
-    std::vector<std::string> tipos = {"C"};
-    auto alvos = celula.findNearestTarget(celulas, celula.getSearchRadius(), lattice, tipos);
+// Busca o caçador mais próximo
+std::pair<int, int> alvo = celula.findNearestTarget(cT, lattice, {"C"}, rng);
 
-    if (!alvos.empty()) 
-    {
-        // Sorteia um caçador dentre os encontrados
-        std::uniform_int_distribution<int> dist(0, alvos.size() - 1);
-        auto [alvoX, alvoY] = alvos[dist(rng)];
+if (alvo.first != -1) 
+{
+int alvoX = alvo.first;
+int alvoY = alvo.second;
 
-        // Estratégia NOI: mover para direção que mais aumenta a distância até o caçador
-        std::vector<std::pair<int, int>> direcoes = 
-        {
-            {0, -1}, {0, 1}, {1, 0}, {-1, 0}
-        };
+std::vector<std::pair<int, int>> direcoes = {
+{0, -1}, {0, 1}, {1, 0}, {-1, 0}
+};
 
-        std::vector<int> melhoresDirecoes;
-        double melhorValor = -1e9;
+std::vector<int> melhoresDirecoes;
+double melhorValor = -1e9;
 
-        for (int i = 0; i < 4; ++i) 
-        {
-            int dx = direcoes[i].first;
-            int dy = direcoes[i].second;
-            int tempX = x + dx;
-            int tempY = y + dy;
+for (int i = 0; i < 4; ++i) 
+{
+int dx = direcoes[i].first;
+int dy = direcoes[i].second;
+int tempX = x + dx;
+int tempY = y + dy;
 
-            double dist = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
+double dist = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
 
-            if (dist > melhorValor) 
-            {
-                melhorValor = dist;
-                melhoresDirecoes.clear();
-                melhoresDirecoes.push_back(i);
-            }
-            else if (dist == melhorValor) 
-            {
-                melhoresDirecoes.push_back(i);
-            }
-        }
-
-        if (!melhoresDirecoes.empty()) 
-        {
-            std::uniform_int_distribution<int> distEscolha(0, melhoresDirecoes.size() - 1);
-            int direcaoEscolhida = melhoresDirecoes[distEscolha(rng)];
-            celula.randonWalk(newX, newY, direcaoEscolhida);
-        }
-    } 
-    else 
-    {
-        // Nenhum caçador encontrado — movimento aleatório
-        std::uniform_int_distribution<int> dis(0, 3);
-        celula.randonWalk(newX, newY, dis(rng));
-    }
-
-    if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) 
-    {
-        celula.changePosition(newX, newY);
-    }
+if (dist > melhorValor) 
+{
+melhorValor = dist;
+melhoresDirecoes.clear();
+melhoresDirecoes.push_back(i);
+}
+else if (dist == melhorValor) 
+{
+melhoresDirecoes.push_back(i);
+}
 }
 
+if (!melhoresDirecoes.empty()) 
+{
+std::uniform_int_distribution<int> distEscolha(0, melhoresDirecoes.size() - 1);
+int direcaoEscolhida = melhoresDirecoes[distEscolha(rng)];
+celula.randonWalk(newX, newY, direcaoEscolhida);
+}
+} 
+else 
+{
+// Nenhum caçador encontrado — movimento aleatório
+std::uniform_int_distribution<int> dis(0, 3);
+celula.randonWalk(newX, newY, dis(rng));
+}
+
+if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) 
+{
+celula.changePosition(newX, newY);
+}
+}
 
 void moverCelulaBoa(CellLattice& lattice, Cell& celula,
     std::vector<Cell>& cT,
@@ -119,94 +110,58 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
         celulas.insert(celulas.end(), cT.begin(), cT.end());
         celulas.insert(celulas.end(), cC.begin(), cC.end());
 
-        int raio = celula.getSearchRadius();
+        // CLI: buscar separadamente presa e caçador
+        std::pair<int, int> alvoPresa = celula.findNearestTarget(celulas, lattice, {"N"}, rng);
+        std::pair<int, int> alvoCacador = celula.findNearestTarget(celulas, lattice, {"C"}, rng);
 
-        // Busca todos os alvos visíveis
-        auto alvos = celula.findNearestTarget(celulas, raio, lattice, {"N", "C"});
+        double distPresa = (alvoPresa.first == -1) ? 1e9 :
+            lattice.calculateDistance(x, y, alvoPresa.first, alvoPresa.second);
 
-        // Inicializa variáveis para armazenar o alvo mais próximo de cada tipo
-        int menorDistPresa = std::numeric_limits<int>::max();
-        int menorDistCacador = std::numeric_limits<int>::max();
-        std::pair<int, int> posPresa, posCacador;
-        bool encontrouPresa = false, encontrouCacador = false;
+        double distCacador = (alvoCacador.first == -1) ? 1e9 :
+            lattice.calculateDistance(x, y, alvoCacador.first, alvoCacador.second);
 
-        for (const auto& [ax, ay] : alvos) 
-        {
-            for (const auto& agente : celulas) 
-            {
-                if (agente.getCoordenadaX() == ax && agente.getCoordenadaY() == ay) 
-                {
-                    int dist = lattice.calculateDistance(x, y, ax, ay);
-                    if (agente.getTipo() == "N" && dist < menorDistPresa) 
-                    {
-                        menorDistPresa = dist;
-                        posPresa = {ax, ay};
-                        encontrouPresa = true;
-                    }
-                    else if (agente.getTipo() == "C" && dist < menorDistCacador) 
-                    {
-                        menorDistCacador = dist;
-                        posCacador = {ax, ay};
-                        encontrouCacador = true;
-                    }
-                    break;
-                }
-            }
-        }
-
-        bool isFugindo = false;
+        // Decide com base no mais próximo — presa tem prioridade em empate
+        bool isFugindo;
         int alvoX, alvoY;
-        bool encontrou = false;
 
-        if (encontrouPresa && (!encontrouCacador || menorDistPresa <= menorDistCacador)) 
-        {
-            std::tie(alvoX, alvoY) = posPresa;
+        if (distPresa < distCacador || std::abs(distPresa - distCacador) < 1e-6) {
             isFugindo = false;
-            encontrou = true;
-        } 
-        else if (encontrouCacador) 
-        {
-            std::tie(alvoX, alvoY) = posCacador;
+            alvoX = alvoPresa.first;
+            alvoY = alvoPresa.second;
+        } else {
             isFugindo = true;
-            encontrou = true;
+            alvoX = alvoCacador.first;
+            alvoY = alvoCacador.second;
         }
 
-        if (encontrou) 
+        std::vector<std::pair<int, int>> direcoes = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
+        std::vector<int> melhoresDirecoes;
+        double melhorValor = isFugindo ? -1e9 : 1e9;
+
+        for (int i = 0; i < 4; ++i) 
         {
-            std::vector<std::pair<int, int>> direcoes = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
-            std::vector<int> melhoresDirecoes;
-            double melhorValor = isFugindo ? -1e9 : 1e9;
+            int tempX = x + direcoes[i].first;
+            int tempY = y + direcoes[i].second;
+            double distAlvo = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
 
-            for (int i = 0; i < 4; ++i) 
+            if ((isFugindo && distAlvo > melhorValor) ||
+                (!isFugindo && distAlvo < melhorValor)) 
             {
-                int tempX = x + direcoes[i].first;
-                int tempY = y + direcoes[i].second;
-                double distAlvo = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
-
-                if ((isFugindo && distAlvo > melhorValor) ||
-                    (!isFugindo && distAlvo < melhorValor)) 
-                {
-                    melhorValor = distAlvo;
-                    melhoresDirecoes.clear();
-                    melhoresDirecoes.push_back(i);
-                } 
-                else if (distAlvo == melhorValor) 
-                {
-                    melhoresDirecoes.push_back(i);
-                }
-            }
-
-            if (!melhoresDirecoes.empty()) 
+                melhorValor = distAlvo;
+                melhoresDirecoes.clear();
+                melhoresDirecoes.push_back(i);
+            } 
+            else if (distAlvo == melhorValor) 
             {
-                std::uniform_int_distribution<int> escolha(0, melhoresDirecoes.size() - 1);
-                int direcaoEscolhida = melhoresDirecoes[escolha(rng)];
-                celula.randonWalk(newX, newY, direcaoEscolhida);
+                melhoresDirecoes.push_back(i);
             }
-        } 
-        else 
+        }
+
+        if (!melhoresDirecoes.empty()) 
         {
-            std::uniform_int_distribution<int> dis(0, 3);
-            celula.randonWalk(newX, newY, dis(rng));
+            std::uniform_int_distribution<int> escolha(0, melhoresDirecoes.size() - 1);
+            int direcaoEscolhida = melhoresDirecoes[escolha(rng)];
+            celula.randonWalk(newX, newY, direcaoEscolhida);
         }
     } 
     else 
@@ -214,19 +169,20 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
         std::uniform_int_distribution<int> dis(0, 3);
         celula.randonWalk(newX, newY, dis(rng));
     }
+
     if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) 
     {
-    celula.changePosition(newX, newY);
+        celula.changePosition(newX, newY);
     }
 
     // Verifica se capturou uma célula ruim (presa)
     for (int i = cC.size() - 1; i >= 0; --i) 
     {
-    if (cC[i].getCoordenadaX() == newX && cC[i].getCoordenadaY() == newY) 
-    {
-        cC.erase(cC.begin() + i);
-        break;
-    }
+        if (cC[i].getCoordenadaX() == newX && cC[i].getCoordenadaY() == newY) 
+        {
+            cC.erase(cC.begin() + i);
+            break;
+        }
     }
 }
 
@@ -330,24 +286,26 @@ bool write,int sr_normal, int sr_cancer)
 
 //35,43,0,4117423416
 //13,3873,0,4117463394
+//82,22180,0,3613368428
+//26,17159,0,3101174506
 int main() 
 {
     // Parâmetros do caso específico
-    int run = 13;
-    int numCT = 10;
+    int run = 26;
+    int numCT = 5;
     int numcC = 50; // ajuste conforme o caso do .dat
     int numPoint = 0; // idem
     double ncNoise_ct = 1.00;
     double ncNoise_cc = 1.00;
-    unsigned int seed_run = 4117463415; // do .dat
+    unsigned int seed_run = 3101174506; // do .dat
     CellLattice lattice(WIDTH, HEIGHT);
 
     setCTPROBABILITY(ncNoise_ct);
     setCCPROBABILITY(ncNoise_cc);
-    int sr_cancer = 50;
-    int sr_normal = 50;
+    int sr_cancer = 71;
+    int sr_normal = 71;
 
-    bool write = false;
+    bool write = true;
     std::mt19937 rng_local(seed_run);
 
 
@@ -389,7 +347,7 @@ int main()
                                     "_TCT_" + std::to_string(ncNoise_ct) +
                                     "_SR_" + std::to_string(sr_normal)+"Run_"+ std:: to_string(run) + ".xyz";
 
-    int steps_local = runSimulationPaper(lattice,10000, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer);
+    int steps_local = runSimulationPaper(lattice,50000, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer);
 
     std::cout << "Re-execução completa com " << steps_local << " passos." << "\n";
 
