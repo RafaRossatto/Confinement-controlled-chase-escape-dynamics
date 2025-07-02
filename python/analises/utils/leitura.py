@@ -63,7 +63,7 @@ def carregar_dataframes_com_runs(
 
 def carregar_dataframes(
     pasta, NE, TCC, TCT, O,
-    NC=500,
+    NC,
     usar_cache=True,
     forcar_recarregar=False
 ):
@@ -124,9 +124,11 @@ def carregar_dataframes(
     print("Lendo arquivos .dat...")
     dataframes = {}
 
-    for sr_tcc in range(1, 51):
-        for sr_tct in range(1, 51):
-            nome_arquivo = f"NC_{NC}_NE_{NE}_O_{O}_TCC_{TCC}_SR_{sr_tcc}_TCT_{TCT}_SR_{sr_tct}.dat"
+    for sr_tcc in [71]:
+        for sr_tct in [71]:
+            nome_arquivo = f"NC_{NC}_NE_{NE}_O_{O}_TCC_{TCC:.2f}_SR_{sr_tcc}_TCT_{TCT:.2f}_SR_{sr_tct}.dat"
+
+
             caminho_arquivo = os.path.join(pasta, nome_arquivo)
 
             if os.path.exists(caminho_arquivo):

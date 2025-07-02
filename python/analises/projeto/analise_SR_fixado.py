@@ -1,200 +1,82 @@
 import sys
+import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 from utils.leitura import carregar_dataframes_com_runs # type: ignore
 from utils.leitura import carregar_dataframes # type: ignore
 from utils.plotagem import plotar_curvas_media_e_desvio # type: ignore
+from utils.plotagem import plotar_media_steps_por_NC # type: ignore
+
+
 from utils.plotagem import gerar_heatmap_matriz_media # type: ignore
 from utils.estatisticas import gerar_matriz_medias_steps # type: ignore
 
-
-
 import matplotlib.pyplot as plt
 
-
-
-
-import re
-
-def coletar_media_varrendo_sr_tcc_com_sr_tct_fixado(dfs_dict, sr_tct_alvo):
-    """
-    Coleta as médias e desvios dos DataFrames cujo nome segue o padrão:
-    SR_TCC_<x>_SR_TCT_<y>, fixando SR_TCT = sr_tct_alvo, e variando SR_TCC.
-
-    Retorna listas: sr_tccs, medias, desvios
-    """
-    import re
-
-    sr_tccs = []
-    medias = []
-    desvios = []
-
-    padrao = r"SR_TCC_(\d+)_SR_TCT_(\d+)"
-
-    for nome, df in dfs_dict.items():
-        match = re.match(padrao, nome)
-        if match:
-            sr_tcc, sr_tct = map(int, match.groups())
-
-            if sr_tct == sr_tct_alvo:
-                if 'steps' in df.columns:
-                    sr_tccs.append(sr_tcc)
-                    medias.append(df['steps'].mean())
-                    desvios.append(df['steps'].std())
-
-    # Ordena por SR_TCC
-    ordenado = sorted(zip(sr_tccs, medias, desvios))
-    sr_tccs, medias, desvios = zip(*ordenado) if ordenado else ([], [], [])
-    return list(sr_tccs), list(medias), list(desvios)
-
-
-
-
-
-
-
-
-def plotar_medias_sr_tcc(sr_tccs, medias, desvios, 
-                          titulo="Média dos steps variando SR_TCC",
-                          legenda=None,
-                          salvar_em=None):
-    """
-    Plota a média e desvio padrão dos steps em função do SR_TCC.
-
-    Parâmetros:
-    - sr_tccs: lista com os valores de SR_TCC (eixo x)
-    - medias: lista com as médias de steps
-    - desvios: lista com os desvios padrão
-    - titulo: título do gráfico
-    - legenda: string opcional para a legenda
-    - salvar_em: se fornecido, salva o gráfico no caminho especificado
-    """
-
-    plt.figure(figsize=(10, 6))
-    plt.errorbar(sr_tccs, medias, yerr=desvios, fmt='o-', capsize=4, label=legenda)
-
-    plt.xlabel("SR_TCC", fontsize=14)
-    plt.ylabel("Steps médios", fontsize=14)
-    plt.title(titulo, fontsize=16)
-    plt.grid(True)
-    plt.xticks(sr_tccs)  # Garante marcação de cada ponto inteiro
-    #plt.yscale("log")    # Usar escala logarítmica para steps (se desejar)
-
-    if legenda:
-        plt.legend()
-
-    if salvar_em:
-        plt.tight_layout()
-        plt.savefig(salvar_em)
-
-    plt.show()
-
-
-
-
-
-
-
-def plotar_multiplas_curvas_sr_tct(dfs_dict, sr_tct_valores, salvar_em=None):
-    """
-    Plota múltiplas curvas variando SR_TCC para diferentes valores de SR_TCT fixados.
-    """
-    plt.figure(figsize=(10, 6))
-
-    for sr_tct in sr_tct_valores:
-        sr_tccs, medias, desvios = coletar_media_varrendo_sr_tcc_com_sr_tct_fixado(dfs_dict, sr_tct)
-
-        if len(sr_tccs) == 0:
-            print(f"[Aviso] Nenhum dado encontrado para SR_TCT = {sr_tct}")
-            continue
-
-        plt.errorbar(sr_tccs, medias, yerr=desvios, fmt='o-', capsize=4, label=f"SR_TCT = {sr_tct}")
-
-    plt.xlabel("SR_TCC", fontsize=14)
-    plt.ylabel("Steps médios", fontsize=14)
-    plt.title("Steps médios variando SR_TCC para diferentes SR_TCT", fontsize=16)
-    plt.grid(True)
-    plt.xticks(range(1, max(sr_tccs) + 1))
-    plt.legend()
-    plt.tight_layout()
-    
-    if salvar_em:
-        plt.savefig(salvar_em)
-
-    plt.show()
-
-
-
-
-
-
-
-#
-base_path = Path.home() / "Dados_Doc" / "TCC_095" / "TCT_005" / "Distribuição_quadrada" / "NC_500_NE_100_TCC_095_TCT_005"
-
-NE = 100
-TCC = 0.95
-TCT = 0.05
-O = 51
+base_path = Path.home() / "Dados_Doc" / "CLI"/"Teste"
 
 
 # Gera o gráfico do numero de escapers por tempo
-NC_500_NE_500_TCC_005_TCT_005_O_0_passos = carregar_dataframes_com_runs(base_path, NE, TCC, TCT,O, usar_cache=True, forcar_recarregar=False)
-chaves_escolhidas = ["SR_TCC_1_SR_TCT_5"]
+df_NE_10_NC_5= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 5, usar_cache=True, forcar_recarregar=False)
+df_NE_10_NC_10= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 10, usar_cache=True, forcar_recarregar=False)
+df_NE_10_NC_25= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 25, usar_cache=True, forcar_recarregar=False)
+df_NE_10_NC_50= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 50, usar_cache=True, forcar_recarregar=False)
+df_NE_10_NC_100= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 100, usar_cache=True, forcar_recarregar=False)
+df_NE_10_NC_250= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 250, usar_cache=True, forcar_recarregar=False)
+df_NE_10_NC_500= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 500, usar_cache=True, forcar_recarregar=False)
+df_NE_10_NC_1000= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 1000, usar_cache=True, forcar_recarregar=False)
+df_NE_10_NC_5000= carregar_dataframes(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 5000, usar_cache=True, forcar_recarregar=False)
 
-valor_inicial = 100
-nome_pdf=f"H_M_NC_500_NE_{NE}_TCC_{TCC}_TCT_{TCT}_O_{O}_passos.pdf"
-
-
-plotar_curvas_media_e_desvio(
-    dataframes=NC_500_NE_500_TCC_005_TCT_005_O_0_passos,
-    chaves_escolhidas=chaves_escolhidas,
-    salvar_pdf=True,
-    nome_pdf=nome_pdf,
-    valor_inicial=valor_inicial,
-    mostrar= False  # se quiser exibir também
-)
-""""
-# Gera o gráfico de mapa de calor.
-df = carregar_dataframes(base_path,NE,TCC,TCT,O,usar_cache=True,forcar_recarregar=False)
-df_matriz, max_abaixo = gerar_matriz_medias_steps(df, limite=2800)
-limite = 2800
-titulo = f"NC_500_NE_{NE}_TCC_{TCC}_TCT_{TCT}_O_{O}"
-salvar_pdf=True
-nome_pdf=f"H_M_NC_500_NE_{NE}_TCC_{TCC}_TCT_{TCT}_O_{O}.pdf"
+dfs_por_nc = {
+    5: df_NE_10_NC_5,
+    10: df_NE_10_NC_10,
+    25: df_NE_10_NC_25,
+    50: df_NE_10_NC_50,
+    100: df_NE_10_NC_100,
+    250: df_NE_10_NC_250,
+    500: df_NE_10_NC_500,
+    1000: df_NE_10_NC_1000,
+    5000: df_NE_10_NC_5000,
+}
 
 
-gerar_heatmap_matriz_media(
-    dfs = df,
-    limite=limite,
-    titulo=titulo,
-    salvar_pdf=salvar_pdf,
-    nome_pdf=nome_pdf
-)
+# Dados extraídos da linha vermelha do artigo
+nc_artigo = [
+    5.35, 7.23, 10.09, 13.65, 18.01, 23.37, 30.51, 39.51,
+    51.20, 66.15, 85.51, 110.79, 143.14, 184.63, 237.88,
+    306.14, 394.53, 508.56, 655.51, 844.26, 1086.73, 1397.31,
+    1793.53, 2300.80, 2954.88, 3794.79, 4875.91, 6263.71,
+    8040.97, 10307.67
+]
+
+t_artigo = [
+    103775.29, 81279.62, 66273.38, 54310.73, 44560.39, 36402.96, 29567.57,
+    24014.33, 19457.61, 15711.49, 12676.75, 10246.97, 8286.83, 6702.06,
+    5425.58, 4373.86, 3524.47, 2822.72, 2260.66, 1810.81, 1457.78, 1176.82,
+    952.81, 774.36, 630.95, 513.69, 419.52, 344.23, 281.96, 237.89
+]
+
+
+#plotar_media_steps_por_NC(dfs_por_nc, titulo="number of initial escapees $N^{O}_{E}=25$", salvar=True, nome_arquivo="N_E_25.pdf")
+ncs, medias = plotar_media_steps_por_NC(dfs_por_nc)
 
 
 
-#sr_tccs, medias, desvios = coletar_media_varrendo_sr_tcc_com_sr_tct_fixado(
-#    dfs_dict=df,
-#    sr_tct_alvo=10
-#)
+plt.figure(figsize=(8, 6))
 
+print (medias)
+# Seus dados aqui
+plt.plot(ncs, medias, 'o-', label='Meus dados', color='blue')
 
-print("=== Dados para plotagem ===")
-for sr, media, desvio in zip(sr_tccs, medias, desvios):
-    print(f"SR_TCC = {sr:2d} -> Média = {media:.2f}, Desvio = {desvio:.2f}")
-# Verificar os dados ANTES de plotar
-print("\n=== Dados para plotagem ===")
-for sr, media, desvio in zip(sr_tccs, medias, desvios):
-    print(f"SR_TCC = {sr:2d} -> Média = {media:.2f}, Desvio = {desvio:.2f}")
+# Dados do artigo
+plt.plot(nc_artigo, t_artigo, 'o--', label='Artigo (linha vermelha)', color='red')
 
-print("Tamanhos -> sr_tccs:", len(sr_tccs), "| medias:", len(medias), "| desvios:", len(desvios))
-# Agora vamos plotar
-plotar_medias_sr_tcc(
-    sr_tccs, medias, desvios,
-    titulo="Steps médios variando SR_TCC (TCT_SR=1)",
-    legenda="TCT_SR = 10",
-    salvar_em="grafico_steps_vs_sr_tcc.pdf"
-)
-
-"""
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel("the number of chasers $N_C$")
+plt.ylabel("trapping time $T$")
+plt.title("Comparação dos dados")
+plt.legend()
+plt.grid(True, which='both', ls='--', lw=0.5)
+plt.tight_layout()
+plt.show()

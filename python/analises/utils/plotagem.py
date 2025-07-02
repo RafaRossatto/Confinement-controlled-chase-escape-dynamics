@@ -124,3 +124,49 @@ def gerar_heatmap_matriz_media(
     if salvar_pdf:
         plt.savefig(nome_pdf, format='pdf')
         print(f"Gráfico salvo em: {nome_pdf}")
+
+
+
+
+def plotar_media_steps_por_NC(dfs_por_nc, titulo="Média de steps por NC", salvar=False, nome_arquivo="grafico.pdf"):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    ncs = []
+    medias = []
+
+    for nc, dfs_dict in dfs_por_nc.items():
+        todas_as_steps = []
+
+        for df in dfs_dict.values():
+            if "steps" in df.columns:
+                steps_validos = pd.to_numeric(df["steps"], errors="coerce").dropna()
+                todas_as_steps.extend(steps_validos)
+
+        if todas_as_steps:
+            media = np.mean(todas_as_steps)
+            ncs.append(nc)
+            medias.append(media)
+        else:
+            print(f"[Aviso] Nenhuma coluna 'steps' válida para NC = {nc}")
+
+    # Ordenar os pontos por NC para o gráfico
+    ncs, medias = zip(*sorted(zip(ncs, medias)))
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(ncs, medias, marker='o')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel("the number of chasers $N_{C}$")
+    plt.ylabel("trapping time $T$")
+    plt.title(titulo)
+    plt.grid(True)
+
+    if salvar:
+        plt.savefig(nome_arquivo)
+        print(f"Gráfico salvo em: {nome_arquivo}")
+    else:
+        plt.show()
+
+    return list(ncs), list(medias)
