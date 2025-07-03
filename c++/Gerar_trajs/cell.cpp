@@ -68,39 +68,44 @@ return {nearestIndex, minDistance};
 
 */
 
-std::pair<int, int> Cell::findNearestTarget(
+std::vector<std::pair<int, int>> Cell::findNearestTarget(
     const std::vector<Cell>& targets,
     const CellLattice& lattice,
-    const std::vector<std::string>& tipos_alvo,
-    std::mt19937& rng) const
+    const std::vector<std::string>& tipos_alvo) const
 {
+    int searchRadius = 71; // 🔥 DEFINIDO FIXO PARA TESTES
+
     int x = m_coordenadaX;
     int y = m_coordenadaY;
 
-    double minDist = std::numeric_limits<double>::max();
-    std::vector<std::pair<int, int>> candidatos;
+    std::vector<std::pair<int, int>> encontrados;
 
     for (const auto& alvo : targets) {
+        if (alvo.getNumero() == this->getNumero())
+        continue; // Não considerar a si mesmo
         if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end())
             continue;
 
         double dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
 
-        if (dist < minDist) {
-            minDist = dist;
-            candidatos = {{alvo.getCoordenadaX(), alvo.getCoordenadaY()}};
-        } else if (std::abs(dist - minDist) < 1e-6) {
-            candidatos.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
+        if (dist <= static_cast<double>(searchRadius) + 1e-6) {
+            encontrados.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
         }
     }
+    /*
+    
+    std::cout << "[DEBUG] Célula em (" << m_coordenadaX << ", " << m_coordenadaY << ") encontrou "
+          << encontrados.size() << " alvos:\n";
 
-    if (!candidatos.empty()) {
-        std::uniform_int_distribution<size_t> distIndex(0, candidatos.size() - 1);
-        return candidatos[distIndex(rng)];
-    }
-
-    return {-1, -1};
+    for (const auto& par : encontrados) {
+    std::cout << "    → Alvo em (" << par.first << ", " << par.second << ")\n";
+}   
+   std:: cin.get();
+    
+    */
+   return encontrados;
 }
+
 
 
 
