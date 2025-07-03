@@ -42,12 +42,6 @@ void moverCelulaRuim(CellLattice& lattice, Cell& celula,
     // Busca caçadores no raio de procura
     std::vector<std::string> tipos = {"N"};
     auto alvos = celula.findNearestTarget(celulas, lattice, tipos);
-    
-    if (alvos.empty()) 
-    {
-    std::cerr << "⚠️ Nenhum alvo encontrado\n";
-    }
-    
 
     if (!alvos.empty()) 
     {
@@ -94,7 +88,7 @@ void moverCelulaRuim(CellLattice& lattice, Cell& celula,
         // Nenhum caçador encontrado — movimento aleatório
         std::uniform_int_distribution<int> dis(0, 3);
         celula.randonWalk(newX, newY, dis(rng));
-        std::cerr << "⚠️ Fazendo RW\n";
+         std::cerr << "⚠️ Fazendo RW_ruim\n";
     }
 
     if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) 
@@ -127,10 +121,6 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
 
         // Busca todos os alvos visíveis
         auto alvos = celula.findNearestTarget(celulas, lattice, {"O"});
-        if (alvos.empty()) 
-        {
-        std::cerr << "⚠️ Nenhum alvo encontrado\n";
-        }
 
         // Inicializa variáveis para armazenar o alvo mais próximo de cada tipo
         int menorDistPresa = std::numeric_limits<int>::max();
@@ -189,10 +179,6 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
             {
                 int tempX = x + direcoes[i].first;
                 int tempY = y + direcoes[i].second;
-
-                
-                //if (lattice.isOccupied(tempX, tempY, cT, cC, obstaculos, verificacC))
-                //continue; // Posição bloqueada, pula
                 double distAlvo = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
 
                 if ((isFugindo && distAlvo > melhorValor) ||
@@ -219,14 +205,13 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
         {
             std::uniform_int_distribution<int> dis(0, 3);
             celula.randonWalk(newX, newY, dis(rng));
-             std::cerr << "⚠️ Fazendo RW\n";
         }
     } 
     else 
     {
         std::uniform_int_distribution<int> dis(0, 3);
         celula.randonWalk(newX, newY, dis(rng));
-        std::cerr << "⚠️ Fazendo RW\n";
+         std::cerr << "⚠️ Fazendo RW\n";
     }
     if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) 
     {
@@ -351,9 +336,9 @@ int main()
     // Parâmetros do caso específico
     int run = 26;
     int numCT = 5;
-    int numcC = 100; // ajuste conforme o caso do .dat
+    int numcC = 1; // ajuste conforme o caso do .dat
     int numPoint = 0; // idem
-    double ncNoise_ct = 0.50;
+    double ncNoise_ct = 0.95;
     double ncNoise_cc = 1.00;
     unsigned int seed_run = 3101174506; // do .dat
     CellLattice lattice(WIDTH, HEIGHT);
