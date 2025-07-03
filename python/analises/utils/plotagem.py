@@ -135,6 +135,7 @@ def plotar_media_steps_por_NC(dfs_por_nc, titulo="Média de steps por NC", salva
 
     ncs = []
     medias = []
+    desvios = []
 
     for nc, dfs_dict in dfs_por_nc.items():
         todas_as_steps = []
@@ -146,16 +147,18 @@ def plotar_media_steps_por_NC(dfs_por_nc, titulo="Média de steps por NC", salva
 
         if todas_as_steps:
             media = np.mean(todas_as_steps)
+            desvio = np.std(todas_as_steps)
             ncs.append(nc)
             medias.append(media)
+            desvios.append(desvio)
         else:
             print(f"[Aviso] Nenhuma coluna 'steps' válida para NC = {nc}")
 
     # Ordenar os pontos por NC para o gráfico
-    ncs, medias = zip(*sorted(zip(ncs, medias)))
+    ncs, medias, desvios = zip(*sorted(zip(ncs, medias, desvios)))
 
     plt.figure(figsize=(10, 6))
-    plt.plot(ncs, medias, marker='o')
+    plt.errorbar(ncs, medias, yerr=desvios, fmt='o-', capsize=5)
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel("the number of chasers $N_{C}$")
@@ -169,4 +172,4 @@ def plotar_media_steps_por_NC(dfs_por_nc, titulo="Média de steps por NC", salva
     else:
         plt.show()
 
-    return list(ncs), list(medias)
+    return list(ncs), list(medias), list(desvios)
