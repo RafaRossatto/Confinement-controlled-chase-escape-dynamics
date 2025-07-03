@@ -88,7 +88,7 @@ void moverCelulaRuim(CellLattice& lattice, Cell& celula,
         // Nenhum caçador encontrado — movimento aleatório
         std::uniform_int_distribution<int> dis(0, 3);
         celula.randonWalk(newX, newY, dis(rng));
-         std::cerr << "⚠️ Fazendo RW_ruim\n";
+        std::cerr << "⚠️ Fazendo RW_ruim\n";
     }
 
     if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) 
@@ -336,11 +336,11 @@ int main()
     // Parâmetros do caso específico
     int run = 26;
     int numCT = 5;
-    int numcC = 1; // ajuste conforme o caso do .dat
+    int numcC = 10; // ajuste conforme o caso do .dat
     int numPoint = 0; // idem
-    double ncNoise_ct = 0.95;
+    double ncNoise_ct = 1.00;
     double ncNoise_cc = 1.00;
-    unsigned int seed_run = 3101174506; // do .dat
+    unsigned int seed_run = 1101174506; // do .dat
     CellLattice lattice(WIDTH, HEIGHT);
 
     setCTPROBABILITY(ncNoise_ct);
