@@ -5,6 +5,7 @@
 #include <limits>
 class CellLattice;
 
+enum Direction { NORTH=1, EAST=0, SOUTH=2, WEST=3 };
 class Cell 
 {
     private:
@@ -25,7 +26,7 @@ class Cell
             const std::vector<std::string>& tipos_alvo) const;
         
 
-        void randonWalk(int& x, int& y,int move);
+        void randonWalk(int& x, int& y,Direction move);
         
     // Getters
     std::string getTipo() const; 

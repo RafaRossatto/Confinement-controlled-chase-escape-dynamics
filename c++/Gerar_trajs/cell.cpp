@@ -35,45 +35,26 @@ int Cell::getCoordenadaY() const
 // Método para alterar a posição
 void Cell::changePosition(int newX, int newY) 
 {
+    if (newX < 0 || newX >= 100 || newY < 0 || newY >= 100) {
+        std::cerr << "ERRO GRAVE: Tentativa de mover célula " << m_numero
+                  << " para posição inválida (" << newX << "," << newY << ")\n"
+                  << "Posição atual: (" << m_coordenadaX << "," << m_coordenadaY << ")\n"
+                  << "Stack trace:\n";
+        // Pode adicionar mais informações de debug aqui
+        newX = (newX % 100 + 100) % 100; // Força correção
+        newY = (newY % 100 + 100) % 100;
+    std::cin.get();
+    }
     m_coordenadaX = newX;
     m_coordenadaY = newY;
 }
-
-/*
-std::pair<int, int> Cell::findNearestTarget(const std::vector<Cell>& targets,
-    int searchRadius,
-    const CellLattice& lattice) const
-{
-int nearestIndex = -1;
-int minDistance = std::numeric_limits<int>::max();
-
-for (int radius : RAIOS_PROGRESSIVOS) {
-if (radius > searchRadius) break;
-
-for (int i = 0; i < targets.size(); ++i) {
-int distance = lattice.calculateDistance(this->getCoordenadaX(),
-             this->getCoordenadaY(),
-             targets[i].getCoordenadaX(),
-             targets[i].getCoordenadaY());
-
-if (distance <= radius && distance < minDistance) {
-minDistance = distance;
-nearestIndex = i;
-}
-}
-}
-
-return {nearestIndex, minDistance};
-}
-
-*/
 
 std::vector<std::pair<int, int>> Cell::findNearestTarget(
     const std::vector<Cell>& targets,
     const CellLattice& lattice,
     const std::vector<std::string>& tipos_alvo) const
 {
-    int searchRadius = 71; // 🔥 DEFINIDO FIXO PARA TESTES
+    int searchRadius = 100; // 🔥 DEFINIDO FIXO PARA TESTES
 
     int x = m_coordenadaX;
     int y = m_coordenadaY;
@@ -81,56 +62,75 @@ std::vector<std::pair<int, int>> Cell::findNearestTarget(
     std::vector<std::pair<int, int>> encontrados;
 
     for (const auto& alvo : targets) {
-        if (alvo.getNumero() == this->getNumero())
-        continue; // Não considerar a si mesmo
-        if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end())
-            continue;
+        if (alvo.getCoordenadaX() == this->getCoordenadaX() &&
+        alvo.getCoordenadaY() == this->getCoordenadaY())
+        continue;
+        std::cout << "[DEBUG] Testando alvo tipo: " << alvo.getTipo() 
+              << " em (" << alvo.getCoordenadaX() << "," << alvo.getCoordenadaY() << ") ";
+        if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end()){
+        std::cout << "❌ Ignorado (tipo não incluso)\n";    
+        continue;
+        }
 
+        
         double dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
+
+        std::cout << "[DISTANCIA] De (" << x << "," << y << ") até (" << alvo.getCoordenadaX() << "," << alvo.getCoordenadaY()
+          << ") = " << dist << "\n";
 
         if (dist <= static_cast<double>(searchRadius) + 1e-6) {
             encontrados.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
         }
     }
-    /*
     
+    /*
     std::cout << "[DEBUG] Célula em (" << m_coordenadaX << ", " << m_coordenadaY << ") encontrou "
           << encontrados.size() << " alvos:\n";
 
     for (const auto& par : encontrados) {
     std::cout << "    → Alvo em (" << par.first << ", " << par.second << ")\n";
 }   
-   std:: cin.get();
-    
     */
+   //std:: cin.get();
+    
    return encontrados;
 }
 
 
 
+void Cell::randonWalk(int& x, int& y, Direction move) {
+    const int WIDTH = 100;
+    const int HEIGHT = 100;
 
+    int oldX = x, oldY = y; // Guarda posição original
 
-
-void Cell::randonWalk(int& x, int& y,int move)
-{
-    switch (move) 
-    {
-        case NORTH:
-            y = (y+1)%HEIGHT;
-            break;
-        
-        case EAST:
-            x=(x+1)% WIDTH;
-            break;
+    switch (move) {
         case SOUTH:
             y = (y - 1 + HEIGHT) % HEIGHT;
             break;
+        case NORTH:
+            y = (y + 1) % HEIGHT;
+            break;
+        case EAST:
+            x = (x + 1) % WIDTH;
+            break;
+        
         case WEST:
             x = (x - 1 + WIDTH) % WIDTH;
             break;
     }
-}
 
+    // Verificação de movimento inválido
+    if (x < 0 || y < 0) 
+    {
+        std::cerr << "ALERTA: Movimento inválido detectado!\n"
+                  << "Célula tentou mover de (" << oldX << "," << oldY << ") "
+                  << "para (" << x << "," << y << ") com direção " << move << "\n";
+        x = (x + WIDTH) % WIDTH;  // Corrige imediatamente
+        y = (y + HEIGHT) % HEIGHT;
+        std ::cin.get();
+    }
+}
 void Cell::setSearchRadius(int sr) {
     search_radius = sr;
 }
