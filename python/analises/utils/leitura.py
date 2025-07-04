@@ -124,8 +124,8 @@ def carregar_dataframes(
     print("Lendo arquivos .dat...")
     dataframes = {}
 
-    for sr_tcc in [71]:
-        for sr_tct in [71]:
+    for sr_tcc in [100]:
+        for sr_tct in [100]:
             nome_arquivo = f"NC_{NC}_NE_{NE}_O_{O}_TCC_{TCC:.2f}_SR_{sr_tcc}_TCT_{TCT:.2f}_SR_{sr_tct}.dat"
 
 
