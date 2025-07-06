@@ -28,45 +28,45 @@ void setCCPROBABILITY(double newValue)
     CCPROBABILITY = newValue;
 }
 
-void moverCelulaRuim(CellLattice& lattice, Cell& celula,
+void moverCelulaRuim(CellLattice& lattice, Cell& cell,
                     std::vector<Cell>& cT, std::vector<Cell>& cC,
-                    std::vector<Obstacle>& obstaculos,
-                    std::mt19937& rng, bool verificacC) {
-    
-    const int WIDTH = 100;
-    const int HEIGHT = 100;
-    int x = celula.getCoordenadaX();
-    int y = celula.getCoordenadaY();
+                    std::vector<Obstacle>& obstacles,
+                    std::mt19937& rng, bool checkcC) 
+{    
+    int x = cell.getCoordenadaX();
+    int y = cell.getCoordenadaY();
     int newX = x, newY = y;
 
     std::vector<Cell> celulas;
     celulas.insert(celulas.end(), cT.begin(), cT.end());
     celulas.insert(celulas.end(), cC.begin(), cC.end());
-
-    // Busca APENAS alvos do tipo "N" (para fugir)
-    auto alvos = celula.findNearestTarget(celulas, lattice, {"N"});
+    auto alvos = cell.findNearestTarget(celulas, lattice, {"N"});
 
     int menorDist = std::numeric_limits<int>::max();
     int alvoX = 0, alvoY = 0;
-    bool encontrou = false;
+    bool find = false;
 
     // Passo 1: Encontra a "N" mais próxima
-    for (const auto& [ax, ay] : alvos) {
-        for (const auto& agente : celulas) {
-            if (agente.getCoordenadaX() == ax && agente.getCoordenadaY() == ay) {
+    for (const auto& [ax, ay] : alvos) 
+    {
+        for (const auto& agente : celulas) 
+        {
+            if (agente.getCoordenadaX() == ax && agente.getCoordenadaY() == ay) 
+            {
                 int dist = lattice.calculateDistance(x, y, ax, ay);
-                if (dist < menorDist) {
+                if (dist < menorDist) 
+                {
                     menorDist = dist;
                     alvoX = ax; alvoY = ay;
-                    encontrou = true;
+                    find = true;
                 }
-                break;
             }
         }
     }
 
     // Passo 2: Foge ou move aleatoriamente
-    if (encontrou) {
+    if (find) 
+    {
         const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
         std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
         std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
@@ -75,13 +75,15 @@ void moverCelulaRuim(CellLattice& lattice, Cell& celula,
         Direction melhorDirecao = NORTH;
         int tempX_final = x, tempY_final = y;
 
-        for (Direction dir : direcoesEmbaralhadas) {
+        for (Direction dir : direcoesEmbaralhadas) 
+        {
             int tempX = x;
             int tempY = y;
-            celula.randonWalk(tempX, tempY, dir);
+            cell.randonWalk(tempX, tempY, dir);
             double dist = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
 
-            if (dist > maiorDistancia) {
+            if (dist > maiorDistancia) 
+            {
                 maiorDistancia = dist;
                 melhorDirecao = dir;
                 tempX_final = tempX;
@@ -90,47 +92,42 @@ void moverCelulaRuim(CellLattice& lattice, Cell& celula,
         }
         newX = tempX_final;
         newY = tempY_final;
-        std::cout << "[O] Fugindo de N em (" << alvoX << "," << alvoY << ")\n";
     } 
-    else {
+    else 
+    {
         // Movimento aleatório (sem alvos)
         std::uniform_int_distribution<int> dir(0, 3);
-        celula.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-        std::cout << "[O] Movimento aleatório (sem alvos)\n";
+        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
+        logInfo("[O] Random movement (no targets found)");
     }
 
     // Verifica colisão
-    if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) {
-        celula.changePosition(newX, newY);
+    if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC)) 
+    {
+        cell.changePosition(newX, newY);
     } 
-    else {
-        std::cout << "[O] Movimento bloqueado para (" << newX << "," << newY << ")\n";
-    }
 }
 
-
-
-void moverCelulaBoa(CellLattice& lattice, Cell& celula,
+void moverCelulaBoa(CellLattice& lattice, Cell& cell,
                    std::vector<Cell>& cT, std::vector<Cell>& cC,
-                   std::vector<Obstacle>& obstaculos,
-                   std::mt19937& rng, bool verificacC) {
-    
-    const int WIDTH = 100;
-    const int HEIGHT = 100;
-    int x = celula.getCoordenadaX();
-    int y = celula.getCoordenadaY();
+                   std::vector<Obstacle>& obstacles,
+                   std::mt19937& rng, bool checkcC)
+{    
+    int x = cell.getCoordenadaX();
+    int y = cell.getCoordenadaY();
     int newX = x, newY = y;
 
     std::bernoulli_distribution d(CTPROBABILITY);
     bool movimentoInteligente = d(rng);
 
-    if (movimentoInteligente) {
-        std::vector<Cell> celulas;
-        celulas.insert(celulas.end(), cT.begin(), cT.end());
-        celulas.insert(celulas.end(), cC.begin(), cC.end());
+    if (movimentoInteligente) 
+    {
+        std::vector<Cell> cells;
+        cells.insert(cells.end(), cT.begin(), cT.end());
+        cells.insert(cells.end(), cC.begin(), cC.end());
 
         // Busca alvos do tipo "O" (inimigas) e "N" (companheiras)
-        auto alvos = celula.findNearestTarget(celulas, lattice, {"O", "N"});
+        auto targets = cell.findNearestTarget(cells, lattice, {"O", "N"});
 
         int menorDist_O = std::numeric_limits<int>::max(); // Distância para "O" mais próxima
         int menorDist_N = std::numeric_limits<int>::max(); // Distância para "N" mais próxima
@@ -138,26 +135,30 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
         int alvoX_N = 0, alvoY_N = 0;
 
         // Passo 1: Identifica alvos mais próximos de cada tipo
-        for (const auto& [ax, ay] : alvos) {
-            for (const auto& agente : celulas) {
-                if (agente.getCoordenadaX() == ax && agente.getCoordenadaY() == ay) {
-                    int dist = lattice.calculateDistance(x, y, ax, ay);
-                    
-                    if (agente.getTipo() == "O" && dist < menorDist_O) {
+        for (const auto& [ax, ay] : targets) 
+        {
+            for (const auto& agent : cells) 
+            {
+                if (agent.getCoordenadaX() == ax && agent.getCoordenadaY() == ay) 
+                {
+                    int dist = lattice.calculateDistance(x, y, ax, ay);    
+                    if (agent.getTipo() == "O" && dist < menorDist_O) 
+                    {
                         menorDist_O = dist;
                         alvoX_O = ax; alvoY_O = ay;
                     } 
-                    else if (agente.getTipo() == "N" && dist < menorDist_N) {
+                    else if (agent.getTipo() == "N" && dist < menorDist_N) 
+                    {
                         menorDist_N = dist;
                         alvoX_N = ax; alvoY_N = ay;
                     }
-                    break;
                 }
             }
         }
 
         // Passo 2: Toma decisão (prioriza perseguir "O" se existir)
-        if (menorDist_O < menorDist_N) {
+        if (menorDist_O < menorDist_N) 
+        {
             // Persegue "O" mais próxima
             const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
             std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
@@ -167,13 +168,15 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
             Direction melhorDirecao = NORTH;
             int tempX_final = x, tempY_final = y;
 
-            for (Direction dir : direcoesEmbaralhadas) {
+            for (Direction dir : direcoesEmbaralhadas) 
+            {
                 int tempX = x;
                 int tempY = y;
-                celula.randonWalk(tempX, tempY, dir);
+                cell.randonWalk(tempX, tempY, dir);
                 double dist = lattice.calculateDistance(tempX, tempY, alvoX_O, alvoY_O);
 
-                if (dist < menorDistancia) {
+                if (dist < menorDistancia) 
+                {
                     menorDistancia = dist;
                     melhorDirecao = dir;
                     tempX_final = tempX;
@@ -182,40 +185,44 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
             }
             newX = tempX_final;
             newY = tempY_final;
-            std::cout << "[N] Perseguindo O em (" << alvoX_O << "," << alvoY_O << ")\n";
 
             // Verifica se alcançou a célula O (captura)
-            if (newX == alvoX_O && newY == alvoY_O) {
+            if (newX == alvoX_O && newY == alvoY_O) 
+            {
                 // Remove a célula O capturada do vetor cC
-                for (auto it = cC.begin(); it != cC.end(); ) {
-                    if (it->getCoordenadaX() == alvoX_O && it->getCoordenadaY() == alvoY_O) {
-                        std::cout << "[CAPTURA] Célula N " << celula.getNumero() 
-                                  << " capturou O em (" << alvoX_O << "," << alvoY_O << ")\n";
+                for (auto it = cC.begin(); it != cC.end(); ) 
+                {
+                    if (it->getCoordenadaX() == alvoX_O && it->getCoordenadaY() == alvoY_O) 
+                    {
                         it = cC.erase(it);
                         break;
-                    } else {
+                    } 
+                    else 
+                    {
                         ++it;
                     }
                 }
             }
         } 
-        else if (menorDist_N != std::numeric_limits<int>::max()) {
+        else if (menorDist_N != std::numeric_limits<int>::max()) 
+        {
             // Foge da "N" mais próxima
             const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
             std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
             std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
-
             double maiorDistancia = -1.0;
             Direction melhorDirecao = NORTH;
             int tempX_final = x, tempY_final = y;
 
-            for (Direction dir : direcoesEmbaralhadas) {
+            for (Direction dir : direcoesEmbaralhadas) 
+            {
                 int tempX = x;
                 int tempY = y;
-                celula.randonWalk(tempX, tempY, dir);
+                cell.randonWalk(tempX, tempY, dir);
                 double dist = lattice.calculateDistance(tempX, tempY, alvoX_N, alvoY_N);
 
-                if (dist > maiorDistancia) {
+                if (dist > maiorDistancia) 
+                {
                     maiorDistancia = dist;
                     melhorDirecao = dir;
                     tempX_final = tempX;
@@ -224,210 +231,27 @@ void moverCelulaBoa(CellLattice& lattice, Cell& celula,
             }
             newX = tempX_final;
             newY = tempY_final;
-            std::cout << "[N] Fugindo de N em (" << alvoX_N << "," << alvoY_N << ")\n";
         } 
-        else {
-            // Movimento aleatório (sem alvos)
-            std::uniform_int_distribution<int> dir(0, 3);
-            celula.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-            std::cout << "[N] Movimento aleatório (sem alvos)\n";
-        }
-    } 
-    else {
-        // Movimento aleatório (quando não é inteligente)
-        std::uniform_int_distribution<int> dir(0, 3);
-        celula.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-        std::cout << "[N] Movimento aleatório (não inteligente)\n";
-    }
-
-    // Verifica colisão com obstáculos ou outras células
-    if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) {
-        celula.changePosition(newX, newY);
-    } 
-    else {
-        std::cout << "[N] Movimento bloqueado para (" << newX << "," << newY << ")\n";
-    }
-}
-
-
-
-/*
-void moverCelulaBoa(CellLattice& lattice, Cell& celula,
-    std::vector<Cell>& cT,
-    std::vector<Cell>& cC,
-    std::vector<Obstacle>& obstaculos,
-    std::mt19937& rng, bool verificacC)
-{
-    const int WIDTH = 100;
-    const int HEIGHT = 100;
-
-    int x = celula.getCoordenadaX();
-    int y = celula.getCoordenadaY();
-    int newX = x, newY = y;
-
-    std::bernoulli_distribution d(CTPROBABILITY);
-    bool movimentoInteligente = d(rng);
-
-    if (movimentoInteligente) 
-    {
-        std::vector<Cell> celulas;
-        celulas.insert(celulas.end(), cT.begin(), cT.end());
-        celulas.insert(celulas.end(), cC.begin(), cC.end());
-
-        auto alvos = celula.findNearestTarget(celulas, lattice, {"O","N"});
-
-        int menorDist = std::numeric_limits<int>::max();
-        int alvoX = 0, alvoY = 0;
-        bool isFugindo = false;
-        bool encontrou = false;
-
-        for (const auto& [ax, ay] : alvos) 
-        {
-            for (const auto& agente : celulas) 
-            {
-                if (agente.getCoordenadaX() == ax && agente.getCoordenadaY() == ay) 
-                {
-                    int dist = lattice.calculateDistance(x, y, ax, ay);
-                    // LOG PARA DEBUG (adicione aqui)
-                    std::cout << "[DEBUG] Célula " << celula.getNumero() 
-                      << " analisando alvo: (" << ax << "," << ay 
-                      << ") → Tipo: " << agente.getTipo() 
-                      << ", Distância: " << dist 
-                      << ", MenorDist atual: " << menorDist << std::endl;
-                      
-                    if (agente.getTipo() == "O" && dist < menorDist) 
-                    {
-                        menorDist = dist;
-                        alvoX = ax;
-                        alvoY = ay;
-                        isFugindo = false;
-                        encontrou = true;
-                    }
-                    else if (agente.getTipo() == "N" && dist < menorDist) 
-                    {
-                        menorDist = dist;
-                        alvoX = ax;
-                        alvoY = ay;
-                        isFugindo = true;
-                        encontrou = true;
-                    }
-                    break;
-                }
-            }
-        }
-            std::cout << "DECISÃO FINAL: ";
-    if (encontrou) {
-        std::cout << (isFugindo ? "FUGIR de (" : "PERSEGUIR (") << alvoX << "," << alvoY << ")\n";
-    } else {
-        std::cout << "Nenhum alvo válido → Movimento aleatório\n";
-    }
-
-        if (encontrou) 
-        {
-            if (!isFugindo) 
-            {
-                const std::array<Direction, 4> todas_direcoes = {NORTH, EAST, SOUTH, WEST};
-                std::array<Direction, 4> direcoes_embaralhadas = todas_direcoes;
-                std::shuffle(direcoes_embaralhadas.begin(), direcoes_embaralhadas.end(), rng);
-
-                double menorDistancia = std::numeric_limits<double>::max();
-                Direction melhorDirecao = NORTH;
-                int tempX_final = x, tempY_final = y;
-
-                for (Direction dir : direcoes_embaralhadas) {
-                    int tempX = x;
-                    int tempY = y;
-                    celula.randonWalk(tempX, tempY, dir);
-
-                    double dist = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
-
-                    if (dist < menorDistancia) {
-                        menorDistancia = dist;
-                        melhorDirecao = dir;
-                        tempX_final = tempX;
-                        tempY_final = tempY;
-                    }
-                }
-                std::cout << "[PERSEGUIÇÃO] Cel " << celula.getNumero()
-                          << " está em (" << x << "," << y << ")"
-                          << " → quer ir para (" << tempX_final << "," << tempY_final << ")"
-                          << " atrás do alvo (" << alvoX << "," << alvoY << ")"
-                          << " via direção " << melhorDirecao << "\n";
-
-                celula.randonWalk(newX, newY, melhorDirecao);
-            } 
-            else 
-            {
-                const std::array<Direction, 4> todas_direcoes = {NORTH, EAST, SOUTH, WEST};
-                std::array<Direction, 4> direcoes_embaralhadas = todas_direcoes;
-                std::shuffle(direcoes_embaralhadas.begin(), direcoes_embaralhadas.end(), rng);
-
-                double maiorDistancia = -1e9;
-                Direction melhorDirecao = NORTH;
-                int tempX_final = x, tempY_final = y;
-
-                for (Direction dir : direcoes_embaralhadas) 
-                {
-                    int tempX = x;
-                    int tempY = y;
-                    celula.randonWalk(tempX, tempY, dir);
-
-                    double dist = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
-
-                    if (dist > maiorDistancia) 
-                    {
-                        maiorDistancia = dist;
-                        melhorDirecao = dir;
-                        tempX_final = tempX;
-                        tempY_final = tempY;
-                    }
-                }
-                std::cout << "[FUGA] Cel " << celula.getNumero()
-                          << " está em (" << x << "," << y << ")"
-                          << " → quer ir para (" << tempX_final << "," << tempY_final << ")"
-                          << " fugindo da ameaça (" << alvoX << "," << alvoY << ")"
-                          << " via direção " << melhorDirecao << "\n";
-
-                celula.randonWalk(newX, newY, melhorDirecao);
-            }
-        }
         else 
         {
-            std::uniform_int_distribution<int> dis(0, 3);
-            celula.randonWalk(newX, newY, static_cast<Direction>(dis(rng)));
-            std::cerr << "⚠️ Fazendo movimento aleatório (nenhum alvo encontrado)\n";
+            std::uniform_int_distribution<int> dir(0, 3);
+            cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
+            logInfo("[N] Random movement (no targets found)");
         }
     } 
     else 
     {
-        std::uniform_int_distribution<int> dis(0, 3);
-        celula.randonWalk(newX, newY, static_cast<Direction>(dis(rng)));
+        // Movimento aleatório (quando não é inteligente)
+        std::uniform_int_distribution<int> dir(0, 3);
+        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
     }
 
-    if (!lattice.isOccupied(newX, newY, cT, cC, obstaculos, verificacC)) 
+    // Verifica colisão com obstáculos ou outras células
+    if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC)) 
     {
-        celula.changePosition(newX, newY);
-
-        for (auto it = cC.begin(); it != cC.end(); ) 
-        {
-            if (it->getCoordenadaX() == newX && it->getCoordenadaY() == newY) 
-            {
-                it = cC.erase(it);
-            } 
-            else 
-            {
-                ++it;
-            }
-        }
-    }
-    else {
-    std::cerr << "⛔ Célula " << celula.getNumero() 
-    << " não pode mover para (" << newX << "," << newY << ")\n";
-    }
+        cell.changePosition(newX, newY);
+    } 
 }
-*/
-
-
 
 
 
