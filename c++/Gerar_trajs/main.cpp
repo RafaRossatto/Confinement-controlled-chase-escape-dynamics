@@ -362,9 +362,9 @@ int main()
     int numCT = 5;
     int numcC = 10; // ajuste conforme o caso do .dat
     int numPoint = 0; // idem
-    double ncNoise_ct = 0.99;
-    double ncNoise_cc = 0.99;
-    unsigned int seed_run = 3804169; // do .dat
+    double ncNoise_ct = 0.90;
+    double ncNoise_cc = 0.05;
+    unsigned int seed_run = 1608041491; // do .dat
     CellLattice lattice(100, 100);
 
     setCTPROBABILITY(ncNoise_ct);
