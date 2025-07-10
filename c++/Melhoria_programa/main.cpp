@@ -251,6 +251,13 @@ void moverCelulaBoa(CellLattice& lattice, Cell& cell,
     } 
 }
 
+
+
+
+
+
+
+/*
 void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc,
     const std::string& fileName, const std::vector<Obstacle>& point,int sr_normal,int sr_cancer)
@@ -315,37 +322,120 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
             }                
 
             steps++;
-        }
-
-        	
+        }  	
 	#pragma omp critical
 	
     {
     	outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
-		/*
-        std::ofstream evoFile(fileName + "_run_" + std::to_string(run) + "_presas_por_passo.csv");
-    		evoFile << "passo,presas_vivas\n";
-    		for (size_t i = 0; i < presasPorPasso.size(); ++i) 
-		    {
-        		evoFile << (i * intervalo) << "," << presasPorPasso[i] << "\n";
-    		}
-    	evoFile.close();
-	    */
         }
         
     }
     outputFile.close();
     logInfo("Results saved to file: " + fileName);
 }
+*/
+
+
+void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int numPoint,
+    double ncNoise_ct, double ncNoise_cc,
+    const std::string& fileName, const std::vector<Obstacle>& point,
+    int sr_normal, int sr_cancer)
+{
+std::ofstream outputFile(fileName);
+if (!outputFile.is_open()) {
+logError("Failed to open file: " + fileName);
+std::cin.get();
+return;
+}
+outputFile << "run,steps,escapers,seed\n";
+
+std::mt19937 rng_run_selector(GLOBAL_SEED + numPoint + numcC + 99999);
+std::uniform_int_distribution<int> dist_run(1, count);
+
+#pragma omp parallel for schedule(dynamic)
+for (int run = 1; run <= count; ++run) 
+{
+unsigned int seed_run = GLOBAL_SEED + 10 * sr_cancer + 10 * sr_normal + run + 1000 * numcC + 100000 * numPoint;
+std::mt19937 rng_local(seed_run);
+std::vector<Cell> cT_local;
+std::vector<Cell> cC_local;
+std::vector<Obstacle> point_local = point;
+
+if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local, sr_normal, sr_cancer)) {
+#pragma omp critical
+logError("Failed to place the objects in the execution " + std::to_string(run));
+continue;
+}
+
+std::uniform_int_distribution<int> distX(0, lattice.getWidth() - 1);
+std::uniform_int_distribution<int> distY(0, lattice.getHeight() - 1);
+
+std::vector<int> presasPorPasso;
+const int intervalo = 100000;
+int steps = 1;
+bool verificacC;
+
+while (steps < 1000) 
+{
+if (!cT_local.empty()) {
+for (int i = cT_local.size() - 1; i >= 0; --i) {
+  verificacC = false;
+  moverCelulaBoa(lattice, cT_local[i], cT_local, cC_local, point_local, rng_local, verificacC);
+}
+}
+
+if (!cC_local.empty()) {
+for (int i = cC_local.size() - 1; i >= 0; --i) {
+  verificacC = true;
+  moverCelulaRuim(lattice, cC_local[i], cT_local, cC_local, point_local, rng_local, verificacC);
+}
+}
+
+// Descreve o que existe em cada posição
+#pragma omp critical
+{
+std::cout << "[RUN " << run << " - STEP " << steps << "]\n";
+for (int y = 0; y < lattice.getHeight(); ++y) {
+  for (int x = 0; x < lattice.getWidth(); ++x) {
+      std::string valor = lattice.getGridValue(x, y);
+      if (valor != "L") {
+          std::cout << "Posição (" << x << "," << y << ") tem: " << valor << "\n";
+      }
+  }
+}
+}
+
+if (cC_local.empty()) break;
+
+if (steps % intervalo == 0) {
+presasPorPasso.push_back(static_cast<int>(cC_local.size()));
+}
+
+steps++;
+std:: cin.get();
+}
+
+#pragma omp critical
+{
+outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
+}
+}
+
+outputFile.close();
+logInfo("Results saved to file: " + fileName);
+}
+
+
+
 
 
 int main() 
 {
     int count, numCT, numcC, numPoint;
 
-    std::vector<int> numcT_values = {5,10,25,50,100,250,500,1000};
-    std::vector<int> numcC_values = {10,25,50};
-    std::vector<int> numPoint_values = {0};
+    std::vector<int> numcT_values = {5};
+    std::vector<int> numcC_values = {5};
+    std::vector<int> numPoint_values = {40};
     std::vector<double> numNoise_ct = {0.99};
     std::vector<double> numNoise_cc = {0.99};
 
@@ -357,7 +447,7 @@ int main()
     int sr_normal = 100;
     int sr_cancer = 100;
 
-    count = 1000;
+    count = 1;
     for (int ncT_value : numcT_values) 
     {
         numCT = ncT_value;
@@ -379,11 +469,11 @@ int main()
                         cC.clear();
                         point.clear();
 
-                        if (!lattice.loadObstacles(point, numPoint, line)) 
-                        {
-                            logError("Failed to load obstacles");
-                            return 1;
-                        }
+                        //if (!lattice.loadObstacles(point, numPoint, line)) 
+                        //{
+                         //   logError("Failed to load obstacles");
+                          //  return 1;
+                        //}
 
                         std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, sr_normal, sr_cancer);
                         executarRodadas(lattice, count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, fileName, point, sr_normal, sr_cancer);

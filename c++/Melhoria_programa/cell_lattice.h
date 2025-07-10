@@ -18,12 +18,21 @@ class CellLattice
     private:
         int width;
         int height;
+        std::vector<std::vector<std::string>> grid;
     
     public:
         CellLattice(int width_, int height_);
     
         bool loadObstacles(std::vector<Obstacle>& obstacles, int numObstacles, std::string& line) const;
         static double calculateDistance(int x1, int y1, int x2, int y2);
+
+        void printGrid() const;
+
+        void setGridValue(int x, int y, const std::string& value);
+        std::string getGridValue(int x, int y) const;
+        
+        int getWidth() const { return width; }
+        int getHeight() const { return height; }
 
     bool placeObjects(std::vector<Obstacle>& obstacles,
                   std::vector<Cell>& normalCells,
