@@ -99,11 +99,17 @@ void moverCelulaRuim(CellLattice& lattice, Cell& cell,
         logInfo("[O] Random movement (no targets found)");
     }
 
-    // Verifica colisão
     if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC)) 
     {
+        // Limpa a posição antiga
+        lattice.setGridValue(x, y, "L");
+    
+        // Move a célula
         cell.changePosition(newX, newY);
-    } 
+    
+        // Marca a nova posição
+        lattice.setGridValue(newX, newY, "O"); // tipo "O" para célula ruim
+    }
 }
 
 void moverCelulaBoa(CellLattice& lattice, Cell& cell,
@@ -244,25 +250,25 @@ void moverCelulaBoa(CellLattice& lattice, Cell& cell,
         cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
     }
 
-    // Verifica colisão com obstáculos ou outras células
     if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC)) 
-    {
-        cell.changePosition(newX, newY);
-    } 
+{
+    // Limpa posição antiga
+    lattice.setGridValue(x, y, "L");
+
+    // Move a célula
+    cell.changePosition(newX, newY);
+
+    // Marca nova posição
+    lattice.setGridValue(newX, newY, "N");
+} 
 }
 
-
-
-
-
-
-
 /*
-void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int numPoint,
+void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc,
-    const std::string& fileName, const std::vector<Obstacle>& point,int sr_normal,int sr_cancer)
+    const std::string& fileName, const std::vector<Obstacle>& point,
+    int sr_normal, int sr_cancer)
 {
-    //int remaining_cC;
     std::ofstream outputFile(fileName);
     if (!outputFile.is_open()) 
     {
@@ -272,63 +278,82 @@ void executarRodadas(CellLattice& lattice,int count, int numCT, int numcC, int n
     }
     outputFile << "run,steps,escapers,seed\n";
 
-    // Sorteia uma run para salvar evolução temporal
-//int runSorteada = std::uniform_int_distribution<int>(1, count)(std::mt19937(GLOBAL_SEED + numPoint + numcC));
-	std::mt19937 rng_run_selector(GLOBAL_SEED + numPoint + numcC + 99999);
+    std::mt19937 rng_run_selector(GLOBAL_SEED + numPoint + numcC + 99999);
     std::uniform_int_distribution<int> dist_run(1, count);
-    //int runSorteada = dist_run(rng_run_selector);
 
     #pragma omp parallel for schedule(dynamic)
     for (int run = 1; run <= count; ++run) 
     {
-        unsigned int seed_run = GLOBAL_SEED + 10* sr_cancer + 10 * sr_normal + run + 1000 * numcC + 100000 * numPoint;
+        unsigned int seed_run = GLOBAL_SEED + 10 * sr_cancer + 10 * sr_normal + run + 1000 * numcC + 100000 * numPoint;
         std::mt19937 rng_local(seed_run);
         std::vector<Cell> cT_local;
         std::vector<Cell> cC_local;
         std::vector<Obstacle> point_local = point;
 
-        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local,sr_normal,sr_cancer)) 
+        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local, sr_normal, sr_cancer)) 
         {
-            #pragma omp critical
-            logError("Failed to place the objects in the execution " + std::to_string(run));
-            continue;
+        #pragma omp critical
+        logError("Failed to place the objects in the execution " + std::to_string(run));
+        continue;
         }
-
+        std::uniform_int_distribution<int> distX(0, lattice.getWidth() - 1);
+        std::uniform_int_distribution<int> distY(0, lattice.getHeight() - 1);
         std::vector<int> presasPorPasso;
         const int intervalo = 100000;
-
         int steps = 1;
         bool verificacC;
-        while (steps < 50000) 
-        {
-            if (!cT_local.empty()) {
-                for (int i = cT_local.size() - 1; i >= 0; --i) {
-                    verificacC = false;
-                    moverCelulaBoa(lattice,cT_local[i], cT_local, cC_local, point_local, rng_local,verificacC);
-                }
-            }
-            if (!cC_local.empty()) {
-                for (int i = cC_local.size() - 1; i >= 0; --i) {
-                    verificacC = true;
-                    moverCelulaRuim(lattice,cC_local[i], cT_local, cC_local, point_local, rng_local,verificacC);
-                }
-            }
-            if (cC_local.empty()) break;
 
-            
-            if (steps % intervalo == 0)
-	        {
+        while (steps < 100000) 
+        {
+            if (!cT_local.empty()) 
+            {
+                for (int i = cT_local.size() - 1; i >= 0; --i) 
+                {
+                    verificacC = false;
+                    moverCelulaBoa(lattice, cT_local[i], cT_local, cC_local, point_local, rng_local, verificacC);
+                }
+            }
+
+            if (!cC_local.empty()) 
+            {
+                for (int i = cC_local.size() - 1; i >= 0; --i) 
+                {
+                    verificacC = true;
+                    moverCelulaRuim(lattice, cC_local[i], cT_local, cC_local, point_local, rng_local, verificacC);
+                }
+            }
+
+            // Descreve o que existe em cada posição
+            #pragma omp critical
+            {
+                std::cout << "[RUN " << run << " - STEP " << steps << "]\n";
+                for (int y = 0; y < lattice.getHeight(); ++y) 
+                {
+                    for (int x = 0; x < lattice.getWidth(); ++x) 
+                    {
+                        std::string valor = lattice.getGridValue(x, y);
+                        if (valor != "L") 
+                        {
+                            std::cout << "Posição (" << x << "," << y << ") tem: " << valor << "\n";
+                        }
+                    }
+                }
+            }
+
+            if (cC_local.empty()) break;
+            if (steps % intervalo == 0) 
+            {
                 presasPorPasso.push_back(static_cast<int>(cC_local.size()));
-            }                
+            }
 
             steps++;
-        }  	
-	#pragma omp critical
-	
-    {
-    	outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
+            std:: cin.get();
         }
-        
+
+        #pragma omp critical
+        {
+            outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
+        }
     }
     outputFile.close();
     logInfo("Results saved to file: " + fileName);
@@ -375,7 +400,7 @@ const int intervalo = 100000;
 int steps = 1;
 bool verificacC;
 
-while (steps < 1000) 
+while (steps < 50000) 
 {
 if (!cT_local.empty()) {
 for (int i = cT_local.size() - 1; i >= 0; --i) {
@@ -391,20 +416,16 @@ for (int i = cC_local.size() - 1; i >= 0; --i) {
 }
 }
 
-// Descreve o que existe em cada posição
+// Sorteia uma posição aleatória e imprime o conteúdo
+int x_rand = distX(rng_local);
+int y_rand = distY(rng_local);
+std::string valor = lattice.getGridValue(x_rand, y_rand);
+
 #pragma omp critical
 {
-std::cout << "[RUN " << run << " - STEP " << steps << "]\n";
-for (int y = 0; y < lattice.getHeight(); ++y) {
-  for (int x = 0; x < lattice.getWidth(); ++x) {
-      std::string valor = lattice.getGridValue(x, y);
-      if (valor != "L") {
-          std::cout << "Posição (" << x << "," << y << ") tem: " << valor << "\n";
-      }
-  }
+std::cout << "[RUN " << run << " - STEP " << steps << "] Sorteio: (" << x_rand << "," << y_rand << ") -> " << valor << "\n";
 }
-}
-
+std:: cin.get();
 if (cC_local.empty()) break;
 
 if (steps % intervalo == 0) {
@@ -412,7 +433,6 @@ presasPorPasso.push_back(static_cast<int>(cC_local.size()));
 }
 
 steps++;
-std:: cin.get();
 }
 
 #pragma omp critical
@@ -425,17 +445,13 @@ outputFile.close();
 logInfo("Results saved to file: " + fileName);
 }
 
-
-
-
-
 int main() 
 {
     int count, numCT, numcC, numPoint;
 
-    std::vector<int> numcT_values = {5};
-    std::vector<int> numcC_values = {5};
-    std::vector<int> numPoint_values = {40};
+    std::vector<int> numcT_values = {100};
+    std::vector<int> numcC_values = {100};
+    std::vector<int> numPoint_values = {1};
     std::vector<double> numNoise_ct = {0.99};
     std::vector<double> numNoise_cc = {0.99};
 
@@ -468,12 +484,6 @@ int main()
                         cT.clear();
                         cC.clear();
                         point.clear();
-
-                        //if (!lattice.loadObstacles(point, numPoint, line)) 
-                        //{
-                         //   logError("Failed to load obstacles");
-                          //  return 1;
-                        //}
 
                         std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, sr_normal, sr_cancer);
                         executarRodadas(lattice, count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, fileName, point, sr_normal, sr_cancer);
