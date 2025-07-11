@@ -48,99 +48,6 @@ return count;
 }
 
 
-
-
-
-/*
-void moverCelulaRuim(CellLattice& lattice, Cell& cell,
-                    std::vector<Cell>& cT, std::vector<Cell>& cC,
-                    std::vector<Obstacle>& obstacles,
-                    std::mt19937& rng, bool checkcC) 
-{    
-    int x = cell.getCoordenadaX();
-    int y = cell.getCoordenadaY();
-    int newX = x, newY = y;
-
-    std::vector<Cell> celulas;
-    celulas.insert(celulas.end(), cT.begin(), cT.end());
-    celulas.insert(celulas.end(), cC.begin(), cC.end());
-    auto alvos = cell.findNearestTarget(celulas, lattice, {"N"});
-
-    int menorDist = std::numeric_limits<int>::max();
-    int alvoX = 0, alvoY = 0;
-    bool find = false;
-
-    // Passo 1: Encontra a "N" mais próxima
-    for (const auto& [ax, ay] : alvos) 
-    {
-        for (const auto& agente : celulas) 
-        {
-            if (agente.getCoordenadaX() == ax && agente.getCoordenadaY() == ay) 
-            {
-                int dist = lattice.calculateDistance(x, y, ax, ay);
-                if (dist < menorDist) 
-                {
-                    menorDist = dist;
-                    alvoX = ax; alvoY = ay;
-                    find = true;
-                }
-            }
-        }
-    }
-
-    // Passo 2: Foge ou move aleatoriamente
-    if (find) 
-    {
-        const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
-        std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
-        std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
-
-        double maiorDistancia = -1.0;
-        Direction melhorDirecao = NORTH;
-        int tempX_final = x, tempY_final = y;
-
-        for (Direction dir : direcoesEmbaralhadas) 
-        {
-            int tempX = x;
-            int tempY = y;
-            cell.randonWalk(tempX, tempY, dir);
-            double dist = lattice.calculateDistance(tempX, tempY, alvoX, alvoY);
-
-            if (dist > maiorDistancia) 
-            {
-                maiorDistancia = dist;
-                melhorDirecao = dir;
-                tempX_final = tempX;
-                tempY_final = tempY;
-            }
-        }
-        newX = tempX_final;
-        newY = tempY_final;
-    } 
-    else 
-    {
-        // Movimento aleatório (sem alvos)
-        std::uniform_int_distribution<int> dir(0, 3);
-        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-        logInfo("[O] Random movement (no targets found)");
-    }
-
-    if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC)) 
-    {
-        // Limpa a posição antiga
-        lattice.setGridValue(x, y, "L");
-    
-        // Move a célula
-        cell.changePosition(newX, newY);
-    
-        // Marca a nova posição
-        lattice.setGridValue(newX, newY, "O"); // tipo "O" para célula ruim
-    }
-}
-*/
-
-
-
 void moverCelulaRuim(CellLattice& lattice, Cell& cell,
     std::vector<Cell>& cT, std::vector<Cell>& cC,
     std::vector<Obstacle>& obstacles,
@@ -195,7 +102,7 @@ void moverCelulaRuim(CellLattice& lattice, Cell& cell,
     } 
     else 
     {
-        logInfo("[O] Fica parado — nenhuma direção mais segura que a atual");
+        //logInfo("[O] Fica parado — nenhuma direção mais segura que a atual");
         newX = x;
         newY = y;
     }
@@ -270,14 +177,14 @@ void moverCelulaBoa(CellLattice& lattice, Cell& cell,
         }
         else
         {
-            logInfo("[N] Fica parado — nenhuma direção com mais alvos");
+            //logInfo("[N] Fica parado — nenhuma direção com mais alvos");
         }
     }
     else
     {
         std::uniform_int_distribution<int> dir(0, 3);
         cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-        logInfo("[N] Movimento aleatório (não inteligente)");
+        //logInfo("[N] Movimento aleatório (não inteligente)");
     }
 
     if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC))
@@ -336,9 +243,9 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
 
         // Registra o tempo inicial com total de cC
         #pragma omp critical
-        dadosPresas << t << "," << cC_local.size() << "\n";
+        dadosPresas << run << "," << t << "," << cC_local.size() << "\n";
 
-        while (t < 50000.0)
+        while (t < 1.0e6)
         {
             int x_rand = distX(rng_local);
             int y_rand = distY(rng_local);
@@ -356,9 +263,11 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
                 }
             }
 
-            if (!encontrou) {
+            if (!encontrou) 
+            {
                 for (auto& cel : cC_local) {
-                    if (cel.getCoordenadaX() == x_rand && cel.getCoordenadaY() == y_rand) {
+                    if (cel.getCoordenadaX() == x_rand && cel.getCoordenadaY() == y_rand) 
+                    {
                         verificacC = true;
                         moverCelulaRuim(lattice, cel, cT_local, cC_local, point_local, rng_local, verificacC);
                         break;
@@ -366,11 +275,13 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
                 }
             }
 
+            /*
             #pragma omp critical
+            
             std::cout << std::fixed << std::setprecision(6)
                       << "[RUN " << run << " - STEP " << t << "] (" << x_rand << "," << y_rand << ") = "
                       << valor << " → " << (encontrou ? "AÇÃO" : "NADA") << "\n";
-
+            */
             if (t >= proximoRegistro) {
                 #pragma omp critical
                 dadosPresas << run << "," << t << "," << cC_local.size() << "\n";
@@ -387,7 +298,6 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
     }
 
     outputFile.close();
-    //dadosPresas.close();
     logInfo("Resultados salvos em: " + fileName + " e presas_vs_tempo.dat");
 }
 
@@ -404,11 +314,11 @@ int main()
     CAPTUREPROBABILITY = 1.0;
 
 
-    std::vector<int> numcT_values = {20};
-    std::vector<int> numcC_values = {25};
+    std::vector<int> numcT_values = {720};
+    std::vector<int> numcC_values = {800};
     std::vector<int> numPoint_values = {0};
-    std::vector<double> numNoise_ct = {0.99};
-    std::vector<double> numNoise_cc = {0.99};
+    std::vector<double> numNoise_ct = {1.00};
+    std::vector<double> numNoise_cc = {1.00};
 
     std::vector<Cell> cT;
     std::vector<Cell> cC;
@@ -418,7 +328,7 @@ int main()
     int sr_normal = 2;
     int sr_cancer = 2;
 
-    count = 1;
+    count = 100;
     for (int ncT_value : numcT_values) 
     {
         numCT = ncT_value;
