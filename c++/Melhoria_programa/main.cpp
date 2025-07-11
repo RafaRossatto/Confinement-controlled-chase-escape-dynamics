@@ -11,6 +11,7 @@
 #include <tuple>
 #include <algorithm> 
 #include <array> 
+#include <iomanip>
 std::random_device rd;
 unsigned int GLOBAL_SEED = rd();
 double CTPROBABILITY = 1.00; // probabilidade de capturar ou procurar comida
@@ -26,6 +27,31 @@ void setCCPROBABILITY(double newValue)
     CCPROBABILITY = newValue;
 }
 
+
+
+int contarAlvosAoRedor(int x, int y,
+    const std::vector<Cell>& agentes,
+    const CellLattice& lattice,
+    const std::vector<std::string>& tipos,
+    int sigma = 2)
+{
+int count = 0;
+for (const auto& a : agentes) {
+if (std::find(tipos.begin(), tipos.end(), a.getTipo()) == tipos.end())
+continue;
+
+double dist = lattice.calculateDistance(x, y, a.getCoordenadaX(), a.getCoordenadaY());
+if (dist <= sigma + 1e-6)
+++count;
+}
+return count;
+}
+
+
+
+
+
+/*
 void moverCelulaRuim(CellLattice& lattice, Cell& cell,
                     std::vector<Cell>& cT, std::vector<Cell>& cC,
                     std::vector<Obstacle>& obstacles,
@@ -111,169 +137,165 @@ void moverCelulaRuim(CellLattice& lattice, Cell& cell,
         lattice.setGridValue(newX, newY, "O"); // tipo "O" para célula ruim
     }
 }
+*/
 
-void moverCelulaBoa(CellLattice& lattice, Cell& cell,
-                   std::vector<Cell>& cT, std::vector<Cell>& cC,
-                   std::vector<Obstacle>& obstacles,
-                   std::mt19937& rng, bool checkcC)
-{    
+
+
+void moverCelulaRuim(CellLattice& lattice, Cell& cell,
+    std::vector<Cell>& cT, std::vector<Cell>& cC,
+    std::vector<Obstacle>& obstacles,
+    std::mt19937& rng, bool checkcC) 
+{
     int x = cell.getCoordenadaX();
     int y = cell.getCoordenadaY();
     int newX = x, newY = y;
 
-    std::bernoulli_distribution d(CTPROBABILITY);
-    bool movimentoInteligente = d(rng);
+    // Junta as células em um vetor só (como você já faz)
+    std::vector<Cell> celulas;
+    celulas.insert(celulas.end(), cT.begin(), cT.end());
+    celulas.insert(celulas.end(), cC.begin(), cC.end());
 
-    if (movimentoInteligente) 
+    const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
+    std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
+    std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
+
+    // Densidade de caçadores ao redor da posição atual
+    int densidadeAtual = contarAlvosAoRedor(x, y, celulas, lattice, {"N"}, 2);
+
+    int menorDensidade = densidadeAtual;
+    std::vector<Direction> melhoresDirecoes;
+
+    for (Direction dir : direcoesEmbaralhadas) 
     {
-        std::vector<Cell> cells;
-        cells.insert(cells.end(), cT.begin(), cT.end());
-        cells.insert(cells.end(), cC.begin(), cC.end());
+        int tempX = x, tempY = y;
+        cell.randonWalk(tempX, tempY, dir);
 
-        // Busca alvos do tipo "O" (inimigas) e "N" (companheiras)
-        auto targets = cell.findNearestTarget(cells, lattice, {"O", "N"});
+        // Só considera vizinhos livres
+        if (lattice.isOccupied(tempX, tempY, cT, cC, obstacles, checkcC))
+        continue;
 
-        int menorDist_O = std::numeric_limits<int>::max(); // Distância para "O" mais próxima
-        int menorDist_N = std::numeric_limits<int>::max(); // Distância para "N" mais próxima
-        int alvoX_O = 0, alvoY_O = 0;
-        int alvoX_N = 0, alvoY_N = 0;
-
-        // Passo 1: Identifica alvos mais próximos de cada tipo
-        for (const auto& [ax, ay] : targets) 
+        int densidadeVizinha = contarAlvosAoRedor(tempX, tempY, celulas, lattice, {"N"}, 2);
+        if (densidadeVizinha < menorDensidade) 
         {
-            for (const auto& agent : cells) 
-            {
-                if (agent.getCoordenadaX() == ax && agent.getCoordenadaY() == ay) 
-                {
-                    int dist = lattice.calculateDistance(x, y, ax, ay);    
-                    if (agent.getTipo() == "O" && dist < menorDist_O) 
-                    {
-                        menorDist_O = dist;
-                        alvoX_O = ax; alvoY_O = ay;
-                    } 
-                    else if (agent.getTipo() == "N" && dist < menorDist_N) 
-                    {
-                        menorDist_N = dist;
-                        alvoX_N = ax; alvoY_N = ay;
-                    }
-                }
-            }
-        }
-
-        // Passo 2: Toma decisão (prioriza perseguir "O" se existir)
-        if (menorDist_O < menorDist_N) 
-        {
-            // Persegue "O" mais próxima
-            const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
-            std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
-            std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
-
-            double menorDistancia = std::numeric_limits<double>::max();
-            Direction melhorDirecao = NORTH;
-            int tempX_final = x, tempY_final = y;
-
-            for (Direction dir : direcoesEmbaralhadas) 
-            {
-                int tempX = x;
-                int tempY = y;
-                cell.randonWalk(tempX, tempY, dir);
-                double dist = lattice.calculateDistance(tempX, tempY, alvoX_O, alvoY_O);
-
-                if (dist < menorDistancia) 
-                {
-                    menorDistancia = dist;
-                    melhorDirecao = dir;
-                    tempX_final = tempX;
-                    tempY_final = tempY;
-                }
-            }
-            newX = tempX_final;
-            newY = tempY_final;
-
-            // Verifica se alcançou a célula O (captura)
-            if (newX == alvoX_O && newY == alvoY_O) 
-            {
-                // Remove a célula O capturada do vetor cC
-                for (auto it = cC.begin(); it != cC.end(); ) 
-                {
-                    if (it->getCoordenadaX() == alvoX_O && it->getCoordenadaY() == alvoY_O) 
-                    {
-                        it = cC.erase(it);
-                        break;
-                    } 
-                    else 
-                    {
-                        ++it;
-                    }
-                }
-            }
+            menorDensidade = densidadeVizinha;
+            melhoresDirecoes.clear();
+            melhoresDirecoes.push_back(dir);
         } 
-        else if (menorDist_N != std::numeric_limits<int>::max()) 
+        else if (densidadeVizinha == menorDensidade) 
         {
-            // Foge da "N" mais próxima
-            const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
-            std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
-            std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
-            double maiorDistancia = -1.0;
-            Direction melhorDirecao = NORTH;
-            int tempX_final = x, tempY_final = y;
-
-            for (Direction dir : direcoesEmbaralhadas) 
-            {
-                int tempX = x;
-                int tempY = y;
-                cell.randonWalk(tempX, tempY, dir);
-                double dist = lattice.calculateDistance(tempX, tempY, alvoX_N, alvoY_N);
-
-                if (dist > maiorDistancia) 
-                {
-                    maiorDistancia = dist;
-                    melhorDirecao = dir;
-                    tempX_final = tempX;
-                    tempY_final = tempY;
-                }
-            }
-            newX = tempX_final;
-            newY = tempY_final;
-        } 
-        else 
-        {
-            std::uniform_int_distribution<int> dir(0, 3);
-            cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-            logInfo("[N] Random movement (no targets found)");
+            melhoresDirecoes.push_back(dir);
         }
+    }
+
+    if (!melhoresDirecoes.empty()) 
+    {
+        std::shuffle(melhoresDirecoes.begin(), melhoresDirecoes.end(), rng);
+        Direction melhor = melhoresDirecoes.front();
+        cell.randonWalk(newX, newY, melhor);
     } 
     else 
     {
-        // Movimento aleatório (quando não é inteligente)
-        std::uniform_int_distribution<int> dir(0, 3);
-        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
+        logInfo("[O] Fica parado — nenhuma direção mais segura que a atual");
+        newX = x;
+        newY = y;
     }
 
     if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC)) 
-{
-    // Limpa posição antiga
-    lattice.setGridValue(x, y, "L");
-
-    // Move a célula
-    cell.changePosition(newX, newY);
-
-    // Marca nova posição
-    lattice.setGridValue(newX, newY, "N");
-} 
+    {
+        lattice.setGridValue(x, y, "L");
+        cell.changePosition(newX, newY);
+        lattice.setGridValue(newX, newY, "O"); // tipo "O" para célula ruim
+    }
 }
 
-/*
+void moverCelulaBoa(CellLattice& lattice, Cell& cell,
+    std::vector<Cell>& cT, std::vector<Cell>& cC,
+    std::vector<Obstacle>& obstacles,
+    std::mt19937& rng, bool checkcC)
+{
+    int x = cell.getCoordenadaX();
+    int y = cell.getCoordenadaY();
+    int newX = x, newY = y;
+    std::bernoulli_distribution d(CTPROBABILITY);
+    bool movimentoInteligente = d(rng);
+
+    if (movimentoInteligente)
+    {
+        std::vector<Cell> celulas;
+        celulas.insert(celulas.end(), cT.begin(), cT.end());
+        celulas.insert(celulas.end(), cC.begin(), cC.end());
+        const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
+        std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
+        std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
+        int densidadeAtual = contarAlvosAoRedor(x, y, celulas, lattice, {"O"}, 2);
+        int maiorDensidade = densidadeAtual;
+        std::vector<Direction> melhoresDirecoes;
+        for (Direction dir : direcoesEmbaralhadas)
+        {
+            int tempX = x, tempY = y;
+            cell.randonWalk(tempX, tempY, dir);
+            if (lattice.isOccupied(tempX, tempY, cT, cC, obstacles, checkcC))
+            continue;
+            int densidadeVizinha = contarAlvosAoRedor(tempX, tempY, celulas, lattice, {"O"}, 2);
+            if (densidadeVizinha > maiorDensidade)
+            {
+                maiorDensidade = densidadeVizinha;
+                melhoresDirecoes.clear();
+                melhoresDirecoes.push_back(dir);
+            }
+            else if (densidadeVizinha == maiorDensidade)
+            {
+                melhoresDirecoes.push_back(dir);
+            }
+        }
+
+        if (!melhoresDirecoes.empty())
+        {
+            std::shuffle(melhoresDirecoes.begin(), melhoresDirecoes.end(), rng);
+            Direction melhor = melhoresDirecoes.front();
+            cell.randonWalk(newX, newY, melhor);
+            // Se for capturar alguém (i.e. mover para cima de uma célula "O")
+            for (auto it = cC.begin(); it != cC.end(); )
+            {
+            if (it->getCoordenadaX() == newX && it->getCoordenadaY() == newY)
+            {
+                it = cC.erase(it);
+                break;
+            }
+            else
+            {
+            ++it;
+            }
+            }
+        }
+        else
+        {
+            logInfo("[N] Fica parado — nenhuma direção com mais alvos");
+        }
+    }
+    else
+    {
+        std::uniform_int_distribution<int> dir(0, 3);
+        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
+        logInfo("[N] Movimento aleatório (não inteligente)");
+    }
+
+    if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC))
+    {
+        lattice.setGridValue(x, y, "L");
+        cell.changePosition(newX, newY);
+        lattice.setGridValue(newX, newY, "N");
+    }
+}
+
 void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc,
     const std::string& fileName, const std::vector<Obstacle>& point,
     int sr_normal, int sr_cancer)
 {
     std::ofstream outputFile(fileName);
-    if (!outputFile.is_open()) 
-    {
+    if (!outputFile.is_open()) {
         logError("Failed to open file: " + fileName);
-        std::cin.get();
         return;
     }
     outputFile << "run,steps,escapers,seed\n";
@@ -281,177 +303,110 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
     std::mt19937 rng_run_selector(GLOBAL_SEED + numPoint + numcC + 99999);
     std::uniform_int_distribution<int> dist_run(1, count);
 
+    const int L = lattice.getWidth(); // assume grade quadrada
+    const double delta_t = 1.0 / (L * L);
+    const double intervalo = 1.0;
+
     #pragma omp parallel for schedule(dynamic)
     for (int run = 1; run <= count; ++run) 
     {
+        std::string nomeArquivoPresas = "presas_vs_tempo_run_" + std::to_string(run) + ".dat";
+        std::ofstream dadosPresas(nomeArquivoPresas);
+        dadosPresas << "run,tempo,presas\n";
+        
+
         unsigned int seed_run = GLOBAL_SEED + 10 * sr_cancer + 10 * sr_normal + run + 1000 * numcC + 100000 * numPoint;
         std::mt19937 rng_local(seed_run);
-        std::vector<Cell> cT_local;
-        std::vector<Cell> cC_local;
+
+        std::vector<Cell> cT_local, cC_local;
         std::vector<Obstacle> point_local = point;
 
-        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local, sr_normal, sr_cancer)) 
-        {
-        #pragma omp critical
-        logError("Failed to place the objects in the execution " + std::to_string(run));
-        continue;
+        if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local, sr_normal, sr_cancer)) {
+            #pragma omp critical
+            logError("Failed to place objects in run " + std::to_string(run));
+            continue;
         }
-        std::uniform_int_distribution<int> distX(0, lattice.getWidth() - 1);
-        std::uniform_int_distribution<int> distY(0, lattice.getHeight() - 1);
-        std::vector<int> presasPorPasso;
-        const int intervalo = 100000;
-        int steps = 1;
+
+        std::uniform_int_distribution<int> distX(0, L - 1);
+        std::uniform_int_distribution<int> distY(0, L - 1);
+
+        double t = 0.0;
+        double proximoRegistro = intervalo;
         bool verificacC;
 
-        while (steps < 100000) 
+        // Registra o tempo inicial com total de cC
+        #pragma omp critical
+        dadosPresas << t << "," << cC_local.size() << "\n";
+
+        while (t < 50000.0)
         {
-            if (!cT_local.empty()) 
-            {
-                for (int i = cT_local.size() - 1; i >= 0; --i) 
-                {
+            int x_rand = distX(rng_local);
+            int y_rand = distY(rng_local);
+            std::string valor = lattice.getGridValue(x_rand, y_rand);
+
+            // Verifica se há célula naquela posição
+            bool encontrou = false;
+
+            for (auto& cel : cT_local) {
+                if (cel.getCoordenadaX() == x_rand && cel.getCoordenadaY() == y_rand) {
                     verificacC = false;
-                    moverCelulaBoa(lattice, cT_local[i], cT_local, cC_local, point_local, rng_local, verificacC);
+                    moverCelulaBoa(lattice, cel, cT_local, cC_local, point_local, rng_local, verificacC);
+                    encontrou = true;
+                    break;
                 }
             }
 
-            if (!cC_local.empty()) 
-            {
-                for (int i = cC_local.size() - 1; i >= 0; --i) 
-                {
-                    verificacC = true;
-                    moverCelulaRuim(lattice, cC_local[i], cT_local, cC_local, point_local, rng_local, verificacC);
-                }
-            }
-
-            // Descreve o que existe em cada posição
-            #pragma omp critical
-            {
-                std::cout << "[RUN " << run << " - STEP " << steps << "]\n";
-                for (int y = 0; y < lattice.getHeight(); ++y) 
-                {
-                    for (int x = 0; x < lattice.getWidth(); ++x) 
-                    {
-                        std::string valor = lattice.getGridValue(x, y);
-                        if (valor != "L") 
-                        {
-                            std::cout << "Posição (" << x << "," << y << ") tem: " << valor << "\n";
-                        }
+            if (!encontrou) {
+                for (auto& cel : cC_local) {
+                    if (cel.getCoordenadaX() == x_rand && cel.getCoordenadaY() == y_rand) {
+                        verificacC = true;
+                        moverCelulaRuim(lattice, cel, cT_local, cC_local, point_local, rng_local, verificacC);
+                        break;
                     }
                 }
             }
 
-            if (cC_local.empty()) break;
-            if (steps % intervalo == 0) 
-            {
-                presasPorPasso.push_back(static_cast<int>(cC_local.size()));
+            #pragma omp critical
+            std::cout << std::fixed << std::setprecision(6)
+                      << "[RUN " << run << " - STEP " << t << "] (" << x_rand << "," << y_rand << ") = "
+                      << valor << " → " << (encontrou ? "AÇÃO" : "NADA") << "\n";
+
+            if (t >= proximoRegistro) {
+                #pragma omp critical
+                dadosPresas << run << "," << t << "," << cC_local.size() << "\n";
+                proximoRegistro += intervalo;
             }
 
-            steps++;
-            std:: cin.get();
+            if (cC_local.empty()) break;
+            t += delta_t;
         }
 
         #pragma omp critical
-        {
-            outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
-        }
+        outputFile << run << "," << t << "," << cC_local.size() << "," << seed_run << "\n";
+        dadosPresas.close();
     }
+
     outputFile.close();
-    logInfo("Results saved to file: " + fileName);
-}
-*/
-
-
-void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int numPoint,
-    double ncNoise_ct, double ncNoise_cc,
-    const std::string& fileName, const std::vector<Obstacle>& point,
-    int sr_normal, int sr_cancer)
-{
-std::ofstream outputFile(fileName);
-if (!outputFile.is_open()) {
-logError("Failed to open file: " + fileName);
-std::cin.get();
-return;
-}
-outputFile << "run,steps,escapers,seed\n";
-
-std::mt19937 rng_run_selector(GLOBAL_SEED + numPoint + numcC + 99999);
-std::uniform_int_distribution<int> dist_run(1, count);
-
-#pragma omp parallel for schedule(dynamic)
-for (int run = 1; run <= count; ++run) 
-{
-unsigned int seed_run = GLOBAL_SEED + 10 * sr_cancer + 10 * sr_normal + run + 1000 * numcC + 100000 * numPoint;
-std::mt19937 rng_local(seed_run);
-std::vector<Cell> cT_local;
-std::vector<Cell> cC_local;
-std::vector<Obstacle> point_local = point;
-
-if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng_local, sr_normal, sr_cancer)) {
-#pragma omp critical
-logError("Failed to place the objects in the execution " + std::to_string(run));
-continue;
+    //dadosPresas.close();
+    logInfo("Resultados salvos em: " + fileName + " e presas_vs_tempo.dat");
 }
 
-std::uniform_int_distribution<int> distX(0, lattice.getWidth() - 1);
-std::uniform_int_distribution<int> distY(0, lattice.getHeight() - 1);
 
-std::vector<int> presasPorPasso;
-const int intervalo = 100000;
-int steps = 1;
-bool verificacC;
-
-while (steps < 50000) 
-{
-if (!cT_local.empty()) {
-for (int i = cT_local.size() - 1; i >= 0; --i) {
-  verificacC = false;
-  moverCelulaBoa(lattice, cT_local[i], cT_local, cC_local, point_local, rng_local, verificacC);
-}
-}
-
-if (!cC_local.empty()) {
-for (int i = cC_local.size() - 1; i >= 0; --i) {
-  verificacC = true;
-  moverCelulaRuim(lattice, cC_local[i], cT_local, cC_local, point_local, rng_local, verificacC);
-}
-}
-
-// Sorteia uma posição aleatória e imprime o conteúdo
-int x_rand = distX(rng_local);
-int y_rand = distY(rng_local);
-std::string valor = lattice.getGridValue(x_rand, y_rand);
-
-#pragma omp critical
-{
-std::cout << "[RUN " << run << " - STEP " << steps << "] Sorteio: (" << x_rand << "," << y_rand << ") -> " << valor << "\n";
-}
-std:: cin.get();
-if (cC_local.empty()) break;
-
-if (steps % intervalo == 0) {
-presasPorPasso.push_back(static_cast<int>(cC_local.size()));
-}
-
-steps++;
-}
-
-#pragma omp critical
-{
-outputFile << run << "," << steps << "," << cC_local.size() << "," << seed_run << "\n";
-}
-}
-
-outputFile.close();
-logInfo("Results saved to file: " + fileName);
-}
 
 int main() 
 {
     int count, numCT, numcC, numPoint;
 
-    std::vector<int> numcT_values = {100};
-    std::vector<int> numcC_values = {100};
-    std::vector<int> numPoint_values = {1};
+
+    SIZE = 128;
+    WIDTH = SIZE;
+    HEIGHT = SIZE;
+    CAPTUREPROBABILITY = 1.0;
+
+
+    std::vector<int> numcT_values = {20};
+    std::vector<int> numcC_values = {25};
+    std::vector<int> numPoint_values = {0};
     std::vector<double> numNoise_ct = {0.99};
     std::vector<double> numNoise_cc = {0.99};
 
@@ -460,8 +415,8 @@ int main()
     std::vector<Obstacle> point;
     std::string line;
     CellLattice lattice(WIDTH,HEIGHT);
-    int sr_normal = 100;
-    int sr_cancer = 100;
+    int sr_normal = 2;
+    int sr_cancer = 2;
 
     count = 1;
     for (int ncT_value : numcT_values) 

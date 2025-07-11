@@ -1,6 +1,7 @@
 #include "cell.h"
 #include "cell_lattice.h"
 #include <algorithm>
+#include <vector>
 
 // Construtor sem lista de inicialização
 Cell::Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY) 
@@ -35,7 +36,7 @@ int Cell::getCoordenadaY() const
 // Método para alterar a posição
 void Cell::changePosition(int newX, int newY) 
 {
-    if (newX < 0 || newX >= 100 || newY < 0 || newY >= 100) 
+    if (newX < 0 || newX >= HEIGHT || newY < 0 || newY >= WIDTH) 
     {
         logError("CRITICAL ERROR: Attempted to move cell " + std::to_string(m_numero) +
          " to an invalid position (" + std::to_string(newX) + "," + std::to_string(newY) + ")\n" +
@@ -100,16 +101,7 @@ std::vector<std::pair<int, int>> Cell::findNearestTarget(
 
 */
 
-
-
-
-
-
-
-
-
-
-
+/*
 std::vector<std::pair<int, int>> Cell::findNearestTarget(
     const std::vector<Cell>& targets,
     const CellLattice& lattice,
@@ -137,34 +129,10 @@ std::vector<std::pair<int, int>> Cell::findNearestTarget(
     return encontrados;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+*/
 
 void Cell::randonWalk(int& x, int& y, Direction move) 
 {
-    const int WIDTH = 100;
-    const int HEIGHT = 100;
-
     int oldX = x, oldY = y; // Keep the original position.
 
     switch (move) {
