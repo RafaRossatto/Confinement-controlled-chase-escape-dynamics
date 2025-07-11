@@ -94,7 +94,7 @@ void moverCelulaRuim(CellLattice& lattice, Cell& cell,
         }
     }
 
-    if (!melhoresDirecoes.empty()) 
+    if (!melhoresDirecoes.empty() && menorDensidade <= densidadeAtual) 
     {
         std::shuffle(melhoresDirecoes.begin(), melhoresDirecoes.end(), rng);
         Direction melhor = melhoresDirecoes.front();
@@ -102,9 +102,9 @@ void moverCelulaRuim(CellLattice& lattice, Cell& cell,
     } 
     else 
     {
-        //logInfo("[O] Fica parado — nenhuma direção mais segura que a atual");
-        newX = x;
-        newY = y;
+        // Movimento aleatório se nenhuma direção for melhor
+        std::uniform_int_distribution<int> dir(0, 3);
+        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
     }
 
     if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC)) 
@@ -177,7 +177,9 @@ void moverCelulaBoa(CellLattice& lattice, Cell& cell,
         }
         else
         {
-            //logInfo("[N] Fica parado — nenhuma direção com mais alvos");
+            // Movimento aleatório se nenhuma direção for melhor
+            std::uniform_int_distribution<int> dir(0, 3);
+            cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
         }
     }
     else
@@ -211,7 +213,7 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
     std::uniform_int_distribution<int> dist_run(1, count);
 
     const int L = lattice.getWidth(); // assume grade quadrada
-    const double delta_t = 1.0 / (L * L);
+    //const double delta_t = 1.0 / (L * L);
     const double intervalo = 1.0;
 
     #pragma omp parallel for schedule(dynamic)
@@ -247,7 +249,10 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
 
         while (t < 1.0e6)
         {
-            int x_rand = distX(rng_local);
+
+            for (int i = 0; i < L * L; ++i)
+            {
+             int x_rand = distX(rng_local);
             int y_rand = distY(rng_local);
             std::string valor = lattice.getGridValue(x_rand, y_rand);
 
@@ -287,9 +292,10 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
                 dadosPresas << run << "," << t << "," << cC_local.size() << "\n";
                 proximoRegistro += intervalo;
             }
-
+            }
             if (cC_local.empty()) break;
-            t += delta_t;
+            
+            t += 1.0;
         }
 
         #pragma omp critical
