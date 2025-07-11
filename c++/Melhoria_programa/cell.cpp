@@ -49,13 +49,13 @@ void Cell::changePosition(int newX, int newY)
     m_coordenadaY = newY;
 }
 
+/*
 std::vector<std::pair<int, int>> Cell::findNearestTarget(
     const std::vector<Cell>& targets,
     const CellLattice& lattice,
     const std::vector<std::string>& tipos_alvo) const
 {
     int searchRadius = 100; // 🔥 DEFINIDO FIXO PARA TESTES
-
     int x = m_coordenadaX;
     int y = m_coordenadaY;
 
@@ -85,22 +85,83 @@ std::vector<std::pair<int, int>> Cell::findNearestTarget(
         }
     }
     
-    /*
     std::cout << "[DEBUG] Célula em (" << m_coordenadaX << ", " << m_coordenadaY << ") encontrou "
           << encontrados.size() << " alvos:\n";
 
     for (const auto& par : encontrados) {
     std::cout << "    → Alvo em (" << par.first << ", " << par.second << ")\n";
 }   
-    */
+    
    //std:: cin.get();
     
    return encontrados;
 }
 
 
+*/
 
-void Cell::randonWalk(int& x, int& y, Direction move) {
+
+
+
+
+
+
+
+
+
+
+std::vector<std::pair<int, int>> Cell::findNearestTarget(
+    const std::vector<Cell>& targets,
+    const CellLattice& lattice,
+    const std::vector<std::string>& tipos_alvo) const
+{
+    int x = m_coordenadaX;
+    int y = m_coordenadaY;
+    int sigma = 2;
+    std::vector<std::pair<int, int>> encontrados;
+
+    for (const auto& alvo : targets) {
+        if (alvo.getCoordenadaX() == x && alvo.getCoordenadaY() == y)
+            continue;
+
+        if (std::find(tipos_alvo.begin(), tipos_alvo.end(), alvo.getTipo()) == tipos_alvo.end())
+            continue;
+
+        double dist = lattice.calculateDistance(x, y, alvo.getCoordenadaX(), alvo.getCoordenadaY());
+        
+        if (dist <= static_cast<double>(sigma) + 1e-6) {
+            encontrados.emplace_back(alvo.getCoordenadaX(), alvo.getCoordenadaY());
+        }
+    }
+
+    return encontrados;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void Cell::randonWalk(int& x, int& y, Direction move) 
+{
     const int WIDTH = 100;
     const int HEIGHT = 100;
 
@@ -134,10 +195,12 @@ void Cell::randonWalk(int& x, int& y, Direction move) {
         std ::cin.get();
     }
 }
-void Cell::setSearchRadius(int sr) {
+void Cell::setSearchRadius(int sr) 
+{
     search_radius = sr;
 }
 
-int Cell::getSearchRadius() const {
+int Cell::getSearchRadius() const 
+{
     return search_radius;
 }
