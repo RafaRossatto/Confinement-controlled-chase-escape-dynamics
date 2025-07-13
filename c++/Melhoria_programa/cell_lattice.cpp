@@ -66,7 +66,7 @@ double CellLattice::calculateDistance(int x1, int y1, int x2, int y2)
     int dy = std::abs(y2 - y1);
     if (dy > HEIGHT / 2) dy = HEIGHT - dy;
 
-    return dx + dy; // Distância de Manhattan com contorno periódico
+    return dx + dy;
 }
 
 
