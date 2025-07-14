@@ -14,52 +14,22 @@ from utils.estatisticas import gerar_matriz_medias_steps # type: ignore
 
 import matplotlib.pyplot as plt
 
-base_path = Path.home() / "Dados_Doc" / "O_0"/"Teste"
-"""
-df_NE_25_NC_20= carregar_dataframes_com_runs(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 20, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_50_NC_40= carregar_dataframes_com_runs(base_path, NE = 50, TCC= 1.00, TCT=1.00,O=0,NC = 40, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_100_NC_80= carregar_dataframes_com_runs(base_path, NE = 100, TCC= 1.00, TCT=1.00,O=0,NC = 80, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_200_NC_160= carregar_dataframes_com_runs(base_path, NE = 200, TCC= 1.00, TCT=1.00,O=0,NC = 160, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_100_NC_320= carregar_dataframes_com_runs(base_path, NE = 400, TCC= 1.00, TCT=1.00,O=0,NC = 320, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_800_NC_640= carregar_dataframes_com_runs(base_path, NE = 800, TCC= 1.00, TCT=1.00,O=0,NC = 640, 
-                                            usar_cache=True, forcar_recarregar=False)
-
-
-df_NE_25_NC_25= carregar_dataframes_com_runs(base_path, NE = 25, TCC= 1.00, TCT=1.00,O=0,NC = 25, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_50_NC_50= carregar_dataframes_com_runs(base_path, NE = 50, TCC= 1.00, TCT=1.00,wO=0,NC = 50, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_100_NC_100= carregar_dataframes_com_runs(base_path, NE = 100, TCC= 1.00, TCT=1.00,O=0,NC = 100, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_200_NC_200= carregar_dataframes_com_runs(base_path, NE = 200, TCC= 1.00, TCT=1.00,O=0,NC = 200, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_100_NC_400= carregar_dataframes_com_runs(base_path, NE = 400, TCC= 1.00, TCT=1.00,O=0,NC = 400, 
-                                            usar_cache=True, forcar_recarregar=False)
-df_NE_800_NC_800= carregar_dataframes_com_runs(base_path, NE = 800, TCC= 1.00, TCT=1.00,O=0,NC = 800, 
-                                            usar_cache=True, forcar_recarregar=False)
-#print(df_NE_25_NC_25["SR_TCC_2_SR_TCT_2"][1].head())
-"""
-
-base_path = Path.home() / "Dados_Doc" / "O_0" / "Teste"
+base_path = Path.home() / "Dados_Doc" / "p_0.3" 
 valores_ne_nc = [25, 50, 100, 200, 400, 800]
 medias_tau = {}
 
 for ne_nc in valores_ne_nc:
     NE  = ne_nc
     NC = int(ne_nc * 0.8)
-    print(f"\n=== Analisando NE = NC = {NE} ===")
+    O = 4915
+    #print(f"\n=== Analisando NE = NC = {NE} ===")
     
     # Carregar os dados
     df_dict = carregar_dataframes_com_runs(
         pasta=base_path,
-        NE=NE, TCC=1.00, TCT=1.00, O=0,
+        NE=NE, TCC=1.00, TCT=1.00, O=O,
         NC=NC, num_runs=100,
-        usar_cache=True, forcar_recarregar=True
+        usar_cache=True, forcar_recarregar=False
     )
     
     limite = (1 / np.e) * NE
@@ -80,7 +50,7 @@ for ne_nc in valores_ne_nc:
     if passos_tau:
         media_tau = np.mean(passos_tau)
         medias_tau[NE] = media_tau
-        print(f"📊 Média de τ: {media_tau:.2f}")
+        #print(f"📊 Média de τ: {media_tau:.2f}")
     else:
         medias_tau[NE] = None
         print("❌ Nenhuma run atingiu o limite (1/e) * NE.")
