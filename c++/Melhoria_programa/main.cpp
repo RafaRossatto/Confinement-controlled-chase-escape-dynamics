@@ -12,6 +12,8 @@
 #include <algorithm> 
 #include <array> 
 #include <iomanip>
+#include <cmath> // necessário para std::round
+
 std::random_device rd;
 unsigned int GLOBAL_SEED = rd();
 double CTPROBABILITY = 1.00; // probabilidade de capturar ou procurar comida
@@ -319,10 +321,9 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
         double t = 0.0;
         double proximoRegistro = intervalo;
         bool verificacC;
-
-        // Registra o tempo inicial com total de cC
+	std::ofstream evoFile(fileName + "_run_" + std::to_string(run) + "_presas_por_passo.csv");
+	// Registra o tempo inicial com total de cC
         #pragma omp critical
-        std::ofstream evoFile(fileName + "_run_" + std::to_string(run) + "_presas_por_passo.csv");
     	evoFile << "passo,presas_vivas\n";
         evoFile << t << "," << cC_local.size() << "\n";
     
@@ -388,7 +389,7 @@ int main()
     CAPTUREPROBABILITY = 1.0;
     //std::vector<int> numcT_values = {720};
     std::vector<int> numcC_values = {25, 50, 100, 200, 400, 800};
-    std::vector<int> numPoint_values = {0};
+    //std::vector<int> numPoint_values = {0.3*SIZE*SIZE};
     std::vector<double> numNoise_ct = {1.00};
     std::vector<double> numNoise_cc = {1.00};
 
@@ -411,16 +412,15 @@ int main()
                 for (int ncC_value : numcC_values) 
                 {
                     numcC = ncC_value;
-                    numCT = numcC;
-                    for (int np_value : numPoint_values) 
-                    {
-                        numPoint = np_value;
+		            numCT = static_cast<int>(std::round(0.8 * numcC));
+		            //numCT = numcC;
+                     
+                        numPoint = static_cast<int>(std::round(0.3*SIZE*SIZE));
                         cT.clear();
                         cC.clear();
                         point.clear();
                         std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, sr_normal, sr_cancer);
                         executarRodadas(lattice, count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, fileName, point, sr_normal, sr_cancer);
-                    }
                 }
             }
         }

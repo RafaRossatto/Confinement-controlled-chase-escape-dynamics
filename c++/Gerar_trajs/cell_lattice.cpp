@@ -1,6 +1,8 @@
 #include "cell_lattice.h"
 
-CellLattice::CellLattice(int width_, int height_) : width(width_), height(height_) {}
+CellLattice::CellLattice(int width_, int height_) : width(width_), height(height_) {
+    grid.resize(height, std::vector<std::string>(width, "L")); // Inicializa com "L" de livre
+}
 
 bool CellLattice::loadObstacles(std::vector<Obstacle>& obstacles, int numObstacles, std::string& line) const
 {
@@ -42,6 +44,7 @@ bool CellLattice::loadObstacles(std::vector<Obstacle>& obstacles, int numObstacl
     return true;
 }
 
+// distancia de Manhattan   
 double CellLattice::calculateDistance(int x1, int y1, int x2, int y2) 
 {
     int dx = std::abs(x2 - x1);
@@ -50,65 +53,86 @@ double CellLattice::calculateDistance(int x1, int y1, int x2, int y2)
     int dy = std::abs(y2 - y1);
     if (dy > HEIGHT / 2) dy = HEIGHT - dy;
 
-    return std::hypot(dx, dy); // Distância Euclidiana com contorno periódico
+    return dx + dy;
 }
 
 
-
-
-
 bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
-                        std::vector<Cell>& normalCells,
-                      std::vector<Cell>& cancerCells,
-                      int numObstacles, int numNormal, int numCancer,
-                      std::mt19937& rng,int sr_normal, int sr_cancer)
+    std::vector<Cell>& normalCells,
+    std::vector<Cell>& cancerCells,
+    int numObstacles, int numNormal, int numCancer,
+    std::mt19937& rng, int sr_normal, int sr_cancer)
 {
-    const int maxTries = 100;
+const int maxTries = 100;
 
-    // Place normal cells
-    int triesNormal = 0;
-    while (triesNormal < maxTries && normalCells.size() < static_cast<size_t>(numNormal)) {
-        std::uniform_int_distribution<int> distX(0, width - 1);
-        std::uniform_int_distribution<int> distY(0, height - 1);
+// Place obstacles
+int triesObstacles = 0;
+while (triesObstacles < maxTries && obstacles.size() < static_cast<size_t>(numObstacles)) 
+{
+    std::uniform_int_distribution<int> distX(0, width - 1);
+    std::uniform_int_distribution<int> distY(0, height - 1);
+    int x = distX(rng);
+    int y = distY(rng);
+    int id = obstacles.size() + 1;
 
-        int x = distX(rng);
-        int y = distY(rng);
-        int id = normalCells.size() + 1;
+    Obstacle obst("C", id, x, y);
 
-        Cell candidate("N", id, x, y);
-        candidate.setSearchRadius(sr_normal);
+if (!generalOverlap(obst, obstacles, normalCells, cancerCells)) {
+obstacles.push_back(obst);
+triesObstacles = 0;
+setGridValue(x, y, "C"); // obstáculo
+} else {
+++triesObstacles;
+}
+}
 
-        if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) {
-            normalCells.push_back(candidate);
-            triesNormal = 0;
-        } else {
-            ++triesNormal;
-        }
-    }
+// Place normal cells
+int triesNormal = 0;
+while (triesNormal < maxTries && normalCells.size() < static_cast<size_t>(numNormal)) {
+std::uniform_int_distribution<int> distX(0, width - 1);
+std::uniform_int_distribution<int> distY(0, height - 1);
 
-    // Place cancer cells
-    int triesCancer = 0;
-    while (triesCancer < maxTries && cancerCells.size() < static_cast<size_t>(numCancer)) {
-        std::uniform_int_distribution<int> distX(0, width - 1);
-        std::uniform_int_distribution<int> distY(0, height - 1);
+int x = distX(rng);
+int y = distY(rng);
+int id = normalCells.size() + 1;
 
-        int x = distX(rng);
-        int y = distY(rng);
-        int id = cancerCells.size() + 1;
+Cell candidate("N", id, x, y);
+candidate.setSearchRadius(sr_normal);
 
-        Cell candidate("O", id, x, y);
-        candidate.setSearchRadius(sr_cancer);
+if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) {
+normalCells.push_back(candidate);
+triesNormal = 0;
+setGridValue(x, y, "N"); // obstáculo
+} else {
+++triesNormal;
+}
+}
 
-        if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) {
-            cancerCells.push_back(candidate);
-            triesCancer = 0;
-        } else {
-            ++triesCancer;
-        }
-    }
+// Place cancer cells
+int triesCancer = 0;
+while (triesCancer < maxTries && cancerCells.size() < static_cast<size_t>(numCancer)) {
+std::uniform_int_distribution<int> distX(0, width - 1);
+std::uniform_int_distribution<int> distY(0, height - 1);
 
-    return normalCells.size() == static_cast<size_t>(numNormal) &&
-           cancerCells.size() == static_cast<size_t>(numCancer);
+int x = distX(rng);
+int y = distY(rng);
+int id = cancerCells.size() + 1;
+
+Cell candidate("O", id, x, y);
+candidate.setSearchRadius(sr_cancer);
+
+if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) {
+cancerCells.push_back(candidate);
+triesCancer = 0;
+setGridValue(x, y, "O"); // obstáculo
+} else {
+++triesCancer;
+}
+}
+
+return obstacles.size() == static_cast<size_t>(numObstacles) &&
+normalCells.size() == static_cast<size_t>(numNormal) &&
+cancerCells.size() == static_cast<size_t>(numCancer);
 }
 
 bool CellLattice::isOccupied(int x, int y,
@@ -138,4 +162,31 @@ bool CellLattice::isOccupied(int x, int y,
     }
 
     return false;
+}
+
+void CellLattice::setGridValue(int x, int y, const std::string& value) {
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+        grid[y][x] = value;
+    } else {
+        std::cerr << "[ERRO] Tentativa de acesso fora dos limites do grid em setGridValue: (" << x << "," << y << ")\n";
+    }
+}
+
+std::string CellLattice::getGridValue(int x, int y) const {
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+        return grid[y][x];
+    } else {
+        std::cerr << "[ERRO] Tentativa de acesso fora dos limites do grid em getGridValue: (" << x << "," << y << ")\n";
+        return "!";
+    }
+}
+
+void CellLattice::printGrid() const {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            std::cout << grid[y][x] << " ";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "---------------------------\n";
 }
