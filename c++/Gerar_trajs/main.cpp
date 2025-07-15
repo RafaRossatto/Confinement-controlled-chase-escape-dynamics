@@ -13,6 +13,7 @@
 #include <array> 
 #include <iomanip>
 #include <cmath> // necessário para std::round
+
 std::random_device rd;
 unsigned int GLOBAL_SEED = rd();
 
@@ -157,10 +158,6 @@ if (!cacadoresAdjacentes.empty())
         lattice.setGridValue(newX, newY, "O");
     }
 }
-
-
-
-
 
 void moverCelulaBoa(CellLattice& lattice, Cell& cell,
     std::vector<Cell>& cT, std::vector<Cell>& cC,
@@ -346,7 +343,7 @@ bool write,int sr_normal, int sr_cancer)
             for (int i = cT.size() - 1; i >= 0; --i)
             {
                 verificacC = false;
-                moverCelulaBoa(lattice,cT[i], cT, cC, point, rng,verificacC);
+                moverCelulaBoa(lattice,cT[i], cT, cC, point, rng,verificacC,2);
             }
         }
 
@@ -356,7 +353,7 @@ bool write,int sr_normal, int sr_cancer)
             for (int i = cC.size() - 1; i >= 0; --i)
             {
             verificacC = true;
-            moverCelulaRuim(lattice,cC[i], cT, cC, point, rng,verificacC);
+            moverCelulaRuim(lattice,cC[i], cT, cC, point, rng,verificacC,2);
             }
         }
         if (write == true)
@@ -391,15 +388,15 @@ int main()
     int numCT = 5;
     int numcC = 10; // ajuste conforme o caso do .dat
     int numPoint = 0; // idem
-    double ncNoise_ct = 0.90;
-    double ncNoise_cc = 0.05;
+    double ncNoise_ct = 1.0;
+    double ncNoise_cc = 1.0;
     unsigned int seed_run = 1608041491; // do .dat
     CellLattice lattice(WIDTH, HEIGHT);
 
     setCTPROBABILITY(ncNoise_ct);
     setCCPROBABILITY(ncNoise_cc);
-    int sr_cancer = 100;
-    int sr_normal = 100;
+    int sr_cancer = 2;
+    int sr_normal = 2;
 
     bool write = true;
     std::mt19937 rng_local(seed_run);
@@ -410,8 +407,11 @@ int main()
     std::vector<Obstacle> point;
     std::string line;
     int x, y;
-         // Se houver obstáculos
-        if (numPoint != 0) {
+    
+    /*
+    // Se houver obstáculos
+        if (numPoint != 0) 
+        {
             std::string filename = "obstacules_" + std::to_string(numPoint) + ".txt";
             if (!fileExists(filename)) {
                 std::cerr << "Erro: Arquivo " << filename << " não existe.\n";
@@ -428,6 +428,7 @@ int main()
             }
             inputFile.close();
         }
+        */
     if (!lattice.placeObjects(point, cT, cC, numPoint, 
         numCT, numcC, rng_local,sr_normal,sr_cancer)) 
         {
@@ -443,8 +444,8 @@ bool hasInvalidPositions = false;
 
 // Verificar células normais (cT)
 for (const auto& cell : cT) {
-    if (cell.getCoordenadaX() < 0 || cell.getCoordenadaX() >= 100 ||
-        cell.getCoordenadaY() < 0 || cell.getCoordenadaY() >= 100) {
+    if (cell.getCoordenadaX() < 0 || cell.getCoordenadaX() >= HEIGHT ||
+        cell.getCoordenadaY() < 0 || cell.getCoordenadaY() >= WIDTH) {
         std::cerr << "ERRO: Célula NORMAL " << cell.getNumero() 
                   << " em posição inválida (" 
                   << cell.getCoordenadaX() << "," 
@@ -455,8 +456,8 @@ for (const auto& cell : cT) {
 
 // Verificar células cancerosas (cC)
 for (const auto& cell : cC) {
-    if (cell.getCoordenadaX() < 0 || cell.getCoordenadaX() >= 100 ||
-        cell.getCoordenadaY() < 0 || cell.getCoordenadaY() >= 100) {
+    if (cell.getCoordenadaX() < 0 || cell.getCoordenadaX() >= HEIGHT ||
+        cell.getCoordenadaY() < 0 || cell.getCoordenadaY() >= WIDTH) {
         std::cerr << "ERRO: Célula CANCEROSA " << cell.getNumero() 
                   << " em posição inválida (" 
                   << cell.getCoordenadaX() << "," 
@@ -467,8 +468,8 @@ for (const auto& cell : cC) {
 
 // Verificar obstáculos
 for (const auto& obs : point) {
-    if (obs.getCoordenadaX() < 0 || obs.getCoordenadaX() >= 100 ||
-        obs.getCoordenadaY() < 0 || obs.getCoordenadaY() >= 100) {
+    if (obs.getCoordenadaX() < 0 || obs.getCoordenadaX() >= HEIGHT ||
+        obs.getCoordenadaY() < 0 || obs.getCoordenadaY() >= WIDTH) {
         std::cerr << "ERRO: Obstáculo " << obs.getNumero() 
                   << " em posição inválida (" 
                   << obs.getCoordenadaX() << "," 
@@ -488,9 +489,6 @@ if (!hasInvalidPositions) {
 
 std::cout << "=======================\n\n";
 std::cin.get();
-
-
-
     std::string trajectoryFileName = "Run_Trajectory_NH_"+std::to_string(numCT)+"_NE_" + std::to_string(numcC) +
                                     "_O_" + std::to_string(numPoint) +
                                     "_TCC_" + std::to_string(ncNoise_cc) +
@@ -498,7 +496,7 @@ std::cin.get();
                                     "_TCT_" + std::to_string(ncNoise_ct) +
                                     "_SR_" + std::to_string(sr_normal)+"Run_"+ std:: to_string(run) + ".xyz";
 
-    int steps_local = runSimulationPaper(lattice,50000, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer);
+    int steps_local = runSimulationPaper(lattice,10e4, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer);
 
     std::cout << "Re-execução completa com " << steps_local << " passos." << "\n";
 
