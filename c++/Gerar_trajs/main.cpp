@@ -327,6 +327,8 @@ const std::vector<Cell>&d,const std::vector<Obstacle>&b, int timeStep)
     file.close();
 }
 
+
+/*
 int runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
 std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName, std::mt19937& rng,
 bool write,int sr_normal, int sr_cancer) 
@@ -371,12 +373,65 @@ bool write,int sr_normal, int sr_cancer)
     }
     return steps;
 }
+*/
 
+int runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
+std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName, std::mt19937& rng,
+bool write,int sr_normal, int sr_cancer) 
+{
+    const int L = lattice.getWidth(); // assume grade quadrada
+   
+    std::uniform_int_distribution<int> distX(0, L - 1);
+    std::uniform_int_distribution<int> distY(0, L - 1);
+    double t = 0.0;
+    bool verificacC;
+    double intervalo = 100.0; // intervalo desejado entre gravações
+    double proximoRegistro = intervalo;
+    writeToFile(fileName, cT, cC, point, t);
 
-//35,43,0,4117423416
-//13,3873,0,4117463394
-//82,22180,0,3613368428
-//26,17159,0,3101174506
+    while (t < NUMSTEPS)
+    {
+        for (int i = 0; i < L * L; ++i)
+        {
+            int x_rand = distX(rng);
+            int y_rand = distY(rng);
+            std::string valor = lattice.getGridValue(x_rand, y_rand);
+            // Verifica se há célula naquela posição
+            bool encontrou = false;
+            for (auto& cel : cT) 
+            {
+                if (cel.getCoordenadaX() == x_rand && cel.getCoordenadaY() == y_rand) 
+                {
+                    verificacC = false;
+                    moverCelulaBoa(lattice, cel, cT, cC, point, rng, verificacC,2);
+                    encontrou = true;
+                    break;
+                }
+            }
+            if (!encontrou) 
+            {
+                for (auto& cel : cC) 
+                {
+                    if (cel.getCoordenadaX() == x_rand && cel.getCoordenadaY() == y_rand) 
+                    {
+                        verificacC = true;
+                        moverCelulaRuim(lattice, cel, cT, cC, point, rng, verificacC,2);
+                        break;
+                    }
+                }
+            }
+        }
+        if (write && t >= proximoRegistro)
+        {
+            writeToFile(fileName, cT, cC, point, t);
+            proximoRegistro += intervalo;
+        }
+        if (cC.empty()) break;
+        t += 1.0;
+    }
+    return t;
+}
+
 int main() 
 {
     SIZE = 128;
@@ -385,12 +440,14 @@ int main()
     CAPTUREPROBABILITY = 1.0;
     // Parâmetros do caso específico
     int run = 26;
-    int numCT = 5;
-    int numcC = 10; // ajuste conforme o caso do .dat
-    int numPoint = 0; // idem
+    int numcC = 25;
+    int numCT = static_cast<int>(std::round(0.8 * numcC));
+    
+    int numPoint = static_cast<int>(std::round(0 * SIZE*SIZE)); // idem
     double ncNoise_ct = 1.0;
     double ncNoise_cc = 1.0;
-    unsigned int seed_run = 1608041491; // do .dat
+    unsigned int seed_run = 4195782560;// do .dat
+    //2642
     CellLattice lattice(WIDTH, HEIGHT);
 
     setCTPROBABILITY(ncNoise_ct);
@@ -405,9 +462,7 @@ int main()
     std::vector<Cell> cT;
     std::vector<Cell> cC;
     std::vector<Obstacle> point;
-    std::string line;
-    int x, y;
-    
+    std::string line;    
     /*
     // Se houver obstáculos
         if (numPoint != 0) 
@@ -435,7 +490,6 @@ int main()
             std::cerr << "Erro ao posicionar objetos para run " << run << "\n";
             return 1;
         }
-
 
 
 // Verificação de posições iniciais
@@ -487,15 +541,12 @@ if (!hasInvalidPositions) {
     return 1; // Encerra o programa com erro
 }
 
-std::cout << "=======================\n\n";
-std::cin.get();
     std::string trajectoryFileName = "Run_Trajectory_NH_"+std::to_string(numCT)+"_NE_" + std::to_string(numcC) +
                                     "_O_" + std::to_string(numPoint) +
                                     "_TCC_" + std::to_string(ncNoise_cc) +
                                     "_SR_" + std::to_string(sr_cancer)+
                                     "_TCT_" + std::to_string(ncNoise_ct) +
                                     "_SR_" + std::to_string(sr_normal)+"Run_"+ std:: to_string(run) + ".xyz";
-
     int steps_local = runSimulationPaper(lattice,10e4, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer);
 
     std::cout << "Re-execução completa com " << steps_local << " passos." << "\n";

@@ -387,9 +387,7 @@ int main()
     WIDTH = SIZE;
     HEIGHT = SIZE;
     CAPTUREPROBABILITY = 1.0;
-    //std::vector<int> numcT_values = {720};
     std::vector<int> numcC_values = {25, 50, 100, 200, 400, 800};
-    //std::vector<int> numPoint_values = {0.3*SIZE*SIZE};
     std::vector<double> numNoise_ct = {1.00};
     std::vector<double> numNoise_cc = {1.00};
 
