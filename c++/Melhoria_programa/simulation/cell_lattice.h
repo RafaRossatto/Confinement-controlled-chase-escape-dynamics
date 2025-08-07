@@ -39,7 +39,7 @@ class CellLattice
                   std::vector<Cell>& cancerCells,
                   int numObstacles, int numNormal, int numCancer,
                   std::mt19937& rng,
-                  int sr_normal, int sr_cancer);
+                  int sr_normal, int sr_cancer,int run);
     
     template<typename T, typename U>
     bool overlapsWithList(const T& obj, const std::vector<U>& list) const;
