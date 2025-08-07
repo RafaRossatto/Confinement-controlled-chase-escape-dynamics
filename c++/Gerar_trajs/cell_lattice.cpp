@@ -1,4 +1,5 @@
 #include "cell_lattice.h"
+#include <iomanip>
 
 CellLattice::CellLattice(int width_, int height_) : width(width_), height(height_) {
     grid.resize(height, std::vector<std::string>(width, "L")); // Inicializa com "L" de livre
@@ -61,75 +62,121 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
     std::vector<Cell>& normalCells,
     std::vector<Cell>& cancerCells,
     int numObstacles, int numNormal, int numCancer,
-    std::mt19937& rng, int sr_normal, int sr_cancer)
+    std::mt19937& rng, int sr_normal, int sr_cancer, int run)
 {
-const int maxTries = 100;
 
-// Place obstacles
-int triesObstacles = 0;
-while (triesObstacles < maxTries && obstacles.size() < static_cast<size_t>(numObstacles)) 
+        std::ostringstream oss_nc;
+        oss_nc << std::setw(2) << std::setfill('0') << numNormal;
+        std::string ncStr = "nC_" + oss_nc.str();  // ex: nC_05
+
+        std::ostringstream oss_run;
+        oss_run << std::setw(2) << std::setfill('0') << run;
+        std::string runStr = "run_" + oss_run.str();  // ex: run_03
+
+        std::ostringstream oss_obs;
+        oss_obs << std::setw(2) << std::setfill('0') << numObstacles;
+        std::string ObsStr = "obs_" + oss_obs.str();  // por exemplo, o_15
+
+  
+    if (numObstacles > 0)
 {
-    std::uniform_int_distribution<int> distX(0, width - 1);
-    std::uniform_int_distribution<int> distY(0, height - 1);
-    int x = distX(rng);
-    int y = distY(rng);
-    int id = obstacles.size() + 1;
+    std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/"  + runStr + "/obstacules.txt";
+    std::ifstream arquivo(caminhoArquivo);
+    if (!arquivo.is_open()) 
+    {
+        std::cerr << "Erro ao abrir o arquivo: " << caminhoArquivo << std::endl;
+        return false;
+    }
 
-    Obstacle obst("C", id, x, y);
+    int x, y;
+    int id = 1;
+    while (arquivo >> x >> y) 
+    {
+        if (x < 0 || x >= width || y < 0 || y >= height) 
+        {
+            std::cerr << "Posição inválida no arquivo: (" << x << ", " << y << ")\n";
+            continue;
+        }
 
-if (!generalOverlap(obst, obstacles, normalCells, cancerCells)) {
-obstacles.push_back(obst);
-triesObstacles = 0;
-setGridValue(x, y, "C"); // obstáculo
-} else {
-++triesObstacles;
-}
-}
+        Obstacle obst("C", id++, x, y);
+        if (!generalOverlap(obst, obstacles, normalCells, cancerCells)) 
+        {
+            obstacles.push_back(obst);
+            setGridValue(x, y, "C");
+        }
+    }
 
-// Place normal cells
-int triesNormal = 0;
-while (triesNormal < maxTries && normalCells.size() < static_cast<size_t>(numNormal)) {
-std::uniform_int_distribution<int> distX(0, width - 1);
-std::uniform_int_distribution<int> distY(0, height - 1);
-
-int x = distX(rng);
-int y = distY(rng);
-int id = normalCells.size() + 1;
-
-Cell candidate("N", id, x, y);
-candidate.setSearchRadius(sr_normal);
-
-if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) {
-normalCells.push_back(candidate);
-triesNormal = 0;
-setGridValue(x, y, "N"); // obstáculo
-} else {
-++triesNormal;
-}
+    arquivo.close();
 }
 
-// Place cancer cells
-int triesCancer = 0;
-while (triesCancer < maxTries && cancerCells.size() < static_cast<size_t>(numCancer)) {
-std::uniform_int_distribution<int> distX(0, width - 1);
-std::uniform_int_distribution<int> distY(0, height - 1);
+    {
+        std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/"  + runStr + "/chasers.txt";
+        std::ifstream arquivo(caminhoArquivo);
+        if (!arquivo.is_open()) 
+        {
+            std::cerr << "Erro ao abrir o arquivo: " << caminhoArquivo << std::endl;
+            return false;
+        }
+        int x, y;
+        int id = 1;
+        while (arquivo >> x >> y) 
+        {
+            if (x < 0 || x >= width || y < 0 || y >= height) 
+            {
+                std::cerr << "Posição inválida no arquivo: (" << x << ", " << y << ")\n";
+                continue;
+            }
+            Cell candidate("N", id++, x, y);
+            if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) 
+            {
+            normalCells.push_back(candidate);
+            setGridValue(x, y, "N"); // marca na grade
+            }
+        }
 
-int x = distX(rng);
-int y = distY(rng);
-int id = cancerCells.size() + 1;
+        arquivo.close();
+    }
 
-Cell candidate("O", id, x, y);
-candidate.setSearchRadius(sr_cancer);
+    {
 
-if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) {
-cancerCells.push_back(candidate);
-triesCancer = 0;
-setGridValue(x, y, "O"); // obstáculo
-} else {
-++triesCancer;
-}
-}
+        std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/" + runStr + "/escapers.txt";
+        std::ifstream arquivo(caminhoArquivo);
+        if (!arquivo.is_open()) 
+        {
+            std::cerr << "Erro ao abrir o arquivo: " << caminhoArquivo << std::endl;
+            return false;
+        }
+        int x, y;
+        int id = 1;
+        while (arquivo >> x >> y) 
+        {
+            if (x < 0 || x >= width || y < 0 || y >= height) 
+            {
+                std::cerr << "Posição inválida no arquivo: (" << x << ", " << y << ")\n";
+                continue;
+            }
+            Cell candidate("O", id++, x, y);
+            if (!generalOverlap(candidate, obstacles, normalCells, cancerCells)) 
+            {
+            cancerCells.push_back(candidate);
+            setGridValue(x, y, "O"); // marca na grade
+            }
+        }
 
+        arquivo.close();
+    }
+    
+//    std::cerr << "[DEBUG RUN " << run << "] "
+  //        << "Esperado: " << numObstacles << " obstáculos, "
+    //      << numNormal << " caçadores, "
+      //    << numCancer << " presas.\n";
+
+   // std::cerr << "[DEBUG RUN " << run << "] "
+     //     << "Obtido: " << obstacles.size() << " obstáculos, "
+       //   << normalCells.size() << " caçadores, "
+         // << cancerCells.size() << " presas.\n";
+//          std:: cin.get();
+    
 return obstacles.size() == static_cast<size_t>(numObstacles) &&
 normalCells.size() == static_cast<size_t>(numNormal) &&
 cancerCells.size() == static_cast<size_t>(numCancer);
