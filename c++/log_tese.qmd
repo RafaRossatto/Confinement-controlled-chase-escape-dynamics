@@ -4,7 +4,7 @@ format: html
 ---
 
 ## 07/08/2025
-
+test
 - Programas continuan rodando.
 - O que já terminou coloquei na pasta Dados_Doc, no pc do lab.
 - Coloquei na pasta do git os obstaculos, runs e presas inacessiveis de forma comprimida, por conta do tamanho.
