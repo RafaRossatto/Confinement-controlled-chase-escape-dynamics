@@ -327,57 +327,9 @@ const std::vector<Cell>&d,const std::vector<Obstacle>&b, int timeStep)
     file.close();
 }
 
-
-/*
 int runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
 std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName, std::mt19937& rng,
-bool write,int sr_normal, int sr_cancer) 
-{
-    int steps = 1; // Step counter
-    bool verificacC;
-
-    // Main simulation loop
-    while (steps < NUMSTEPS) 
-    {   
-        // Process cells of type T
-        if (!cT.empty())
-        {
-            for (int i = cT.size() - 1; i >= 0; --i)
-            {
-                verificacC = false;
-                moverCelulaBoa(lattice,cT[i], cT, cC, point, rng,verificacC,2);
-            }
-        }
-
-        // Process cancer cells
-        if (!cC.empty())
-        {
-            for (int i = cC.size() - 1; i >= 0; --i)
-            {
-            verificacC = true;
-            moverCelulaRuim(lattice,cC[i], cT, cC, point, rng,verificacC,2);
-            }
-        }
-        if (write == true)
-        {
-            writeToFile(fileName, cT,cC, point, steps);
-        }
-        // Terminate if no cancer cells remain
-        if (cC.empty()) 
-        {
-            logInfo("No more cancer cells. Terminating progam");
-            break;
-        }
-        steps++; // Increment step count
-        //std::cout << "Passo: " << steps << std::endl;
-    }
-    return steps;
-}
-*/
-
-int runSimulationPaper(CellLattice& lattice,const int NUMSTEPS, std::vector<Cell>& cT, 
-std::vector<Cell>& cC, std::vector<Obstacle>& point, const std::string& fileName, std::mt19937& rng,
-bool write,int sr_normal, int sr_cancer) 
+bool write,int sr_normal, int sr_cancer, int run) 
 {
     const int L = lattice.getWidth(); // assume grade quadrada
    
@@ -389,7 +341,32 @@ bool write,int sr_normal, int sr_cancer)
     double proximoRegistro = intervalo;
     writeToFile(fileName, cT, cC, point, t);
 
-    while (t < NUMSTEPS)
+
+
+    std::ostringstream oss_nc;
+    oss_nc << std::setw(2) << std::setfill('0') << cT.size();
+    std::string ncStr = "nC_" + oss_nc.str();  // ex: nC_05
+
+    std::ostringstream oss_run;
+    oss_run << std::setw(2) << std::setfill('0') << run;
+    std::string runStr = "run_" + oss_run.str();  // ex: run_03
+
+    std::ostringstream oss_obs;
+    oss_obs << std::setw(2) << std::setfill('0') << point.size();
+    std::string ObsStr = "obs_" + oss_obs.str();  // por exemplo, o_15
+    std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/" + runStr + "/inaccessible_preys.txt";
+
+    std::ifstream arquivo(caminhoArquivo);
+    if (!arquivo.is_open()) 
+        {
+            std::cerr << "Erro ao abrir o arquivo: " << caminhoArquivo << std::endl;
+        }
+
+    int countInacessiveis = 0;
+    arquivo >> countInacessiveis;
+    arquivo.close();
+
+    while (t < 1.0e5)
     {
         for (int i = 0; i < L * L; ++i)
         {
@@ -426,7 +403,7 @@ bool write,int sr_normal, int sr_cancer)
             writeToFile(fileName, cT, cC, point, t);
             proximoRegistro += intervalo;
         }
-        if (cC.empty()) break;
+        if (static_cast<int>(cC.size()) <= countInacessiveis) break;
         t += 1.0;
     }
     return t;
@@ -446,8 +423,7 @@ int main()
     int numPoint = static_cast<int>(std::round(0 * SIZE*SIZE)); // idem
     double ncNoise_ct = 1.0;
     double ncNoise_cc = 1.0;
-    unsigned int seed_run = 4195782560;// do .dat
-    //2642
+    unsigned int seed_run = 4195782560;
     CellLattice lattice(WIDTH, HEIGHT);
 
     setCTPROBABILITY(ncNoise_ct);
@@ -463,83 +439,72 @@ int main()
     std::vector<Cell> cC;
     std::vector<Obstacle> point;
     std::string line;    
-    /*
-    // Se houver obstáculos
-        if (numPoint != 0) 
-        {
-            std::string filename = "obstacules_" + std::to_string(numPoint) + ".txt";
-            if (!fileExists(filename)) {
-                std::cerr << "Erro: Arquivo " << filename << " não existe.\n";
-                return 1;
-            }
-            std::ifstream inputFile(filename);
-            int id_counter = 1;
-            while (std::getline(inputFile, line)) {
-                std::istringstream lineStream(line);
-                if (lineStream >> x >> y) {
-                    Obstacle new_obstacle = {"C", id_counter++, x, y};
-                    point.push_back(new_obstacle);
-                }
-            }
-            inputFile.close();
-        }
-        */
+
     if (!lattice.placeObjects(point, cT, cC, numPoint, 
-        numCT, numcC, rng_local,sr_normal,sr_cancer)) 
+        numCT, numcC, rng_local,sr_normal,sr_cancer, run)) 
+    {
+        std::cerr << "Erro ao posicionar objetos para run " << run << "\n";
+        return 1;
+    }
+
+
+    // Verificação de posições iniciais
+    std::cout << "\n=== VERIFICAÇÃO DE POSIÇÕES INICIAIS ===\n";
+    bool hasInvalidPositions = false;
+
+    // Verificar células normais (cT)
+    for (const auto& cell : cT) 
+    {
+        if (cell.getCoordenadaX() < 0 || cell.getCoordenadaX() >= HEIGHT ||
+        cell.getCoordenadaY() < 0 || cell.getCoordenadaY() >= WIDTH) 
         {
-            std::cerr << "Erro ao posicionar objetos para run " << run << "\n";
-            return 1;
+            std::cerr << "ERRO: Célula NORMAL " << cell.getNumero() 
+                      << " em posição inválida (" 
+                      << cell.getCoordenadaX() << "," 
+                      << cell.getCoordenadaY() << ")\n";
+            hasInvalidPositions = true;
         }
-
-
-// Verificação de posições iniciais
-std::cout << "\n=== VERIFICAÇÃO DE POSIÇÕES INICIAIS ===\n";
-bool hasInvalidPositions = false;
-
-// Verificar células normais (cT)
-for (const auto& cell : cT) {
-    if (cell.getCoordenadaX() < 0 || cell.getCoordenadaX() >= HEIGHT ||
-        cell.getCoordenadaY() < 0 || cell.getCoordenadaY() >= WIDTH) {
-        std::cerr << "ERRO: Célula NORMAL " << cell.getNumero() 
-                  << " em posição inválida (" 
-                  << cell.getCoordenadaX() << "," 
-                  << cell.getCoordenadaY() << ")\n";
-        hasInvalidPositions = true;
     }
-}
 
-// Verificar células cancerosas (cC)
-for (const auto& cell : cC) {
-    if (cell.getCoordenadaX() < 0 || cell.getCoordenadaX() >= HEIGHT ||
-        cell.getCoordenadaY() < 0 || cell.getCoordenadaY() >= WIDTH) {
-        std::cerr << "ERRO: Célula CANCEROSA " << cell.getNumero() 
-                  << " em posição inválida (" 
-                  << cell.getCoordenadaX() << "," 
-                  << cell.getCoordenadaY() << ")\n";
-        hasInvalidPositions = true;
+    // Verificar células cancerosas (cC)
+    for (const auto& cell : cC) 
+    {
+        if (cell.getCoordenadaX() < 0 || cell.getCoordenadaX() >= HEIGHT ||
+            cell.getCoordenadaY() < 0 || cell.getCoordenadaY() >= WIDTH) 
+        {
+            std::cerr << "ERRO: Célula CANCEROSA " << cell.getNumero() 
+                    << " em posição inválida (" 
+                    << cell.getCoordenadaX() << "," 
+                    << cell.getCoordenadaY() << ")\n";
+            hasInvalidPositions = true;
+        }
     }
-}
 
-// Verificar obstáculos
-for (const auto& obs : point) {
-    if (obs.getCoordenadaX() < 0 || obs.getCoordenadaX() >= HEIGHT ||
-        obs.getCoordenadaY() < 0 || obs.getCoordenadaY() >= WIDTH) {
-        std::cerr << "ERRO: Obstáculo " << obs.getNumero() 
-                  << " em posição inválida (" 
-                  << obs.getCoordenadaX() << "," 
-                  << obs.getCoordenadaY() << ")\n";
-        hasInvalidPositions = true;
+    // Verificar obstáculos
+    for (const auto& obs : point) 
+    {
+        if (obs.getCoordenadaX() < 0 || obs.getCoordenadaX() >= HEIGHT ||
+            obs.getCoordenadaY() < 0 || obs.getCoordenadaY() >= WIDTH) 
+            {
+                std::cerr << "ERRO: Obstáculo " << obs.getNumero() 
+                          << " em posição inválida (" 
+                          << obs.getCoordenadaX() << "," 
+                          << obs.getCoordenadaY() << ")\n";
+                hasInvalidPositions = true;
+        }
     }
-}
 
-if (!hasInvalidPositions) {
-    std::cout << "Todas as posições iniciais são válidas!\n";
-} else {
-    std::cerr << "\nATENÇÃO: Foram encontradas posições iniciais inválidas!\n";
-    // Adicione uma pausa para visualizar o erro
-    std::cin.get();
-    return 1; // Encerra o programa com erro
-}
+    if (!hasInvalidPositions) 
+    {
+        std::cout << "Todas as posições iniciais são válidas!\n";
+    } 
+    else 
+    {
+        std::cerr << "\nATENÇÃO: Foram encontradas posições iniciais inválidas!\n";
+        // Adicione uma pausa para visualizar o erro
+        std::cin.get();
+        return 1; // Encerra o programa com erro
+    }
 
     std::string trajectoryFileName = "Run_Trajectory_NH_"+std::to_string(numCT)+"_NE_" + std::to_string(numcC) +
                                     "_O_" + std::to_string(numPoint) +
@@ -547,7 +512,7 @@ if (!hasInvalidPositions) {
                                     "_SR_" + std::to_string(sr_cancer)+
                                     "_TCT_" + std::to_string(ncNoise_ct) +
                                     "_SR_" + std::to_string(sr_normal)+"Run_"+ std:: to_string(run) + ".xyz";
-    int steps_local = runSimulationPaper(lattice,10e4, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer);
+    int steps_local = runSimulationPaper(lattice,10e6, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer, run);
 
     std::cout << "Re-execução completa com " << steps_local << " passos." << "\n";
 
