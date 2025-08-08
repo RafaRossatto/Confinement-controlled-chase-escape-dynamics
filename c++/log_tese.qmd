@@ -4,18 +4,19 @@ format: html
 ---
 
 ## 07/08/2025
-test
+
 - Programas continuan rodando.
 - O que já terminou coloquei na pasta Dados_Doc, no pc do lab.
 - Coloquei na pasta do git os obstaculos, runs e presas inacessiveis de forma comprimida, por conta do tamanho.
 - Assim como coloquei os arquivos para fazer a simulacao atualizada hoje.
-- Precisa comecar a pensar em fazer o programa que gera a funcao funcionar.
+- Precisa comecar a pensar em fazer o programa que gera as tretjórias funcionar.
+- Comecei a modificar o cell_lattice, precusa ajutar o main para começar.
 
 ## 05/08/2025
 
 - Atualizei os id do que estava no canapad.
 - Esse s_obs_0, está no cenapad: 287445.ada
-- Esse s_obs_1638, está no cenapad: 287446.ada
+ Esse s_obs_1638, está no cenapad: 287446.ada
 - Esse s_obs_3276, está no cenapad: 287447.ada
 - Esse s_obs_4915, está no cenapad: 2874448.ada
 - Esse s_obs_6553, está no cenapad: 287449.ada
