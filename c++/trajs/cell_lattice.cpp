@@ -80,7 +80,8 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
   
     if (numObstacles > 0)
 {
-    std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/"  + runStr + "/obstacules.txt";
+    std::string caminhoArquivo = "../obstacles/" + ObsStr + "/" + ncStr + "/" + runStr + "/obstacules.txt";
+
     std::ifstream arquivo(caminhoArquivo);
     if (!arquivo.is_open()) 
     {
@@ -110,7 +111,7 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
 }
 
     {
-        std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/"  + runStr + "/chasers.txt";
+        std::string caminhoArquivo = "../obstacles/" + ObsStr + "/" + ncStr + "/"  + runStr + "/chasers.txt";
         std::ifstream arquivo(caminhoArquivo);
         if (!arquivo.is_open()) 
         {
@@ -139,7 +140,7 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
 
     {
 
-        std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/" + runStr + "/escapers.txt";
+        std::string caminhoArquivo = "../obstacles/" + ObsStr + "/" + ncStr + "/" + runStr + "/escapers.txt";
         std::ifstream arquivo(caminhoArquivo);
         if (!arquivo.is_open()) 
         {
@@ -177,10 +178,10 @@ bool CellLattice::placeObjects(std::vector<Obstacle>& obstacles,
          // << cancerCells.size() << " presas.\n";
 //          std:: cin.get();
     
-return obstacles.size() == static_cast<size_t>(numObstacles) &&
-normalCells.size() == static_cast<size_t>(numNormal) &&
-cancerCells.size() == static_cast<size_t>(numCancer);
-}
+    return obstacles.size() == static_cast<size_t>(numObstacles) &&
+    normalCells.size() == static_cast<size_t>(numNormal) &&
+    cancerCells.size() == static_cast<size_t>(numCancer);
+    }
 
 bool CellLattice::isOccupied(int x, int y,
                              const std::vector<Cell>& normalCells,

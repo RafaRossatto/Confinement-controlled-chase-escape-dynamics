@@ -354,7 +354,7 @@ bool write,int sr_normal, int sr_cancer, int run)
     std::ostringstream oss_obs;
     oss_obs << std::setw(2) << std::setfill('0') << point.size();
     std::string ObsStr = "obs_" + oss_obs.str();  // por exemplo, o_15
-    std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/" + runStr + "/inaccessible_preys.txt";
+    std::string caminhoArquivo = "../obstacles/" + ObsStr + "/" + ncStr + "/" + runStr + "/inaccessible_preys.txt";
 
     std::ifstream arquivo(caminhoArquivo);
     if (!arquivo.is_open()) 
@@ -416,14 +416,17 @@ int main()
     HEIGHT = SIZE;
     CAPTUREPROBABILITY = 1.0;
     // Parâmetros do caso específico
-    int run = 26;
-    int numcC = 25;
-    int numCT = static_cast<int>(std::round(0.8 * numcC));
-    
-    int numPoint = static_cast<int>(std::round(0 * SIZE*SIZE)); // idem
+    int run = 36;
+    int numcC = 3277;
+    int numCT = 5;
+    int numPoint = 9830; // idem
+    unsigned int seed_run = 990885473;
+
+
     double ncNoise_ct = 1.0;
     double ncNoise_cc = 1.0;
-    unsigned int seed_run = 4195782560;
+    
+    
     CellLattice lattice(WIDTH, HEIGHT);
 
     setCTPROBABILITY(ncNoise_ct);
@@ -512,7 +515,7 @@ int main()
                                     "_SR_" + std::to_string(sr_cancer)+
                                     "_TCT_" + std::to_string(ncNoise_ct) +
                                     "_SR_" + std::to_string(sr_normal)+"Run_"+ std:: to_string(run) + ".xyz";
-    int steps_local = runSimulationPaper(lattice,10e6, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer, run);
+    int steps_local = runSimulationPaper(lattice,10e4, cT, cC, point, trajectoryFileName,rng_local, write,sr_normal,sr_cancer, run);
 
     std::cout << "Re-execução completa com " << steps_local << " passos." << "\n";
 

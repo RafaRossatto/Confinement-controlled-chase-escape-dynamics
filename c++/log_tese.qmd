@@ -3,6 +3,11 @@ title: "Meu Diário de Pesquisa-Tese"
 format: html
 ---
 
+## 08/08/2025
+
+- A principio está certo o programa que gera as tejetórias.
+- Precisa ver se é possivel salvar apenas uma vez os obstátulos, para assim ser mais leve a trajetórias.
+
 ## 07/08/2025
 
 - Programas continuan rodando.
