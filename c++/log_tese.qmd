@@ -7,6 +7,9 @@ format: html
 
 - A principio está certo o programa que gera as tejetórias.
 - Precisa ver se é possivel salvar apenas uma vez os obstátulos, para assim ser mais leve a trajetórias.
+- Fazer um gráfico dos numero de presas inacessiceis em funcao dos numero de obstáculos.
+- Fazer um ajuste das cuevas das presas em funcao do tempo do tipo: ln (c(t)) = ln c_o - (1/tau)t.
+- Onde c_o é o numero inicial de presas e tau vai ser o que a gente vai achar.
 
 ## 07/08/2025
 
