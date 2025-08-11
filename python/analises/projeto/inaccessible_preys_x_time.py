@@ -12,9 +12,6 @@ from utils.plotagem import gerar_heatmap_matriz_media # type: ignore
 from utils.estatisticas import gerar_matriz_medias_steps # type: ignore
 
 
-import numpy as np
-from pathlib import Path
-
 # Lista das pastas obs_XXXX
 obs_list = [
     "obs_00", "obs_1638", "obs_3276", "obs_4914", "obs_6553",
@@ -36,11 +33,11 @@ cmap = plt.cm.viridis
 
 plt.figure(figsize=(10, 6))
 
-# Loop para cada nC_XX
 for idx, nc_folder in enumerate(nc_list):
     obs_normalizados = []
     medias = []
     stds = []
+    presas_totais_list = []  # <-- novo
 
     for obs_folder in obs_list:
         pasta_nc = base_path / obs_folder / nc_folder
@@ -50,7 +47,6 @@ for idx, nc_folder in enumerate(nc_list):
             for i in range(100):
                 pasta_run = pasta_nc / f"run_{i:02d}"
                 arquivo = pasta_run / "inaccessible_preys.txt"
-
                 if arquivo.exists():
                     with open(arquivo, "r") as f:
                         conteudo = f.read().strip()
@@ -59,32 +55,34 @@ for idx, nc_folder in enumerate(nc_list):
                         todos_os_valores.extend(valores)
                     except ValueError:
                         print(f"⚠ Erro ao converter valores em {arquivo}")
-        
+
         if todos_os_valores:
             media = np.mean(todos_os_valores)
             std = np.std(todos_os_valores)
 
             num_obs = int(obs_folder.split("_")[1])
-            obs_normalizados.append(num_obs / area)
+            n = num_obs / area
+            presas_totais = (area - num_obs) / 2  # <-- depende de CADA obs_folder
+
+            obs_normalizados.append(n)
             medias.append(media)
             stds.append(std)
+            presas_totais_list.append(presas_totais)  # <-- guarda alinhado
 
-    # Normalização do Y
     if medias:
-        max_media = max(medias)
-        medias_norm = [m / max_media for m in medias]
-        stds_norm = [s / max_media for s in stds]
+        # normaliza ponto a ponto pelo total de presas daquele n (obs)
+        medias_norm = [m / p for m, p in zip(medias, presas_totais_list)]
+        stds_norm   = [s / p for s, p in zip(stds, presas_totais_list)]
 
-        # Ordena por densidade
+        # ordena por densidade n
         obs_normalizados, medias_norm, stds_norm = zip(
             *sorted(zip(obs_normalizados, medias_norm, stds_norm))
         )
 
-        # Plota cada curva com cor do colormap
         plt.errorbar(obs_normalizados, medias_norm, yerr=stds_norm,
                      fmt='o-', capsize=5, markersize=5,
-                     color=cmap(idx / (len(nc_list) - 1)),  # cor única
-                     label = f"$N_{{O}}^{{C}} = {nc_folder.split('_')[1]}$")
+                     color=cmap(idx / (len(nc_list) - 1)),
+                     label=f"$N_{{O}}^{{C}} = {nc_folder.split('_')[1]}$")
 
 # Linha vertical em x = 0.59
 plt.axvline(x=0.59, color='black', linestyle='--', linewidth=1.5, label='$n$ = 0.59')
@@ -95,6 +93,7 @@ plt.title("Curvas normalizadas para diferentes nC")
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
 plt.tight_layout()
+plt.savefig('test.pdf')
 plt.show()
 
 
