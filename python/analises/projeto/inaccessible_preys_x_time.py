@@ -1,100 +1,106 @@
-import sys
-import pandas as pd
-import numpy as np
 from pathlib import Path
+import numpy as np
 import matplotlib.pyplot as plt
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from utils.leitura import carregar_dataframes_com_runs # type: ignore
-from utils.leitura import carregar_dataframes # type: ignore
-from utils.plotagem import plotar_curvas_media_e_desvio # type: ignore
-from utils.plotagem import plotar_media_steps_por_NC # type: ignore
-from utils.plotagem import gerar_heatmap_matriz_media # type: ignore
-from utils.estatisticas import gerar_matriz_medias_steps # type: ignore
 
+# ---------------------- parâmetros principais ----------------------
+obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
+            "obs_8192", "obs_9830", "obs_11468", "obs_13107", "obs_14745"]
 
-# Lista das pastas obs_XXXX
-obs_list = [
-    "obs_00", "obs_1638", "obs_3276", "obs_4914", "obs_6553",
-    "obs_8192", "obs_9830", "obs_11468", "obs_13107"
+bases = [
+    (r"$N_C = N_P$",      "Nc=Np"),
+    (r"$N_C = 0.5\,N_P$", "Nc=Np*0.5"),
 ]
 
-# Lista dos nC_XX a percorrer
-nc_list = ["nC_05", "nC_10", "nC_50", "nC_100", "nC_500", "nC_1000", "nC_1500"]
-
-# Área da rede
 L = 128
 area = L**2
+NUM_RUNS = 100
+# -------------------------------------------------------------------
 
-# Caminho base
-base_path = Path.home() / "Dados_Doc"
+def total_presas_por_obs(num_obs: int) -> float:
+    """N_P = (área - #obs)/2, isto é, metade dos sítios livres após obstáculos."""
+    livres = area - num_obs
+    return livres / 2.0
 
-# Configuração do colormap
 cmap = plt.cm.viridis
-
 plt.figure(figsize=(10, 6))
 
-for idx, nc_folder in enumerate(nc_list):
-    obs_normalizados = []
-    medias = []
-    stds = []
-    presas_totais_list = []  # <-- novo
+for base_idx, (label_tex, base_dirname) in enumerate(bases):
+    base_path = Path.home() / f"Dados_Doc/{base_dirname}"
+
+    xs_n = []      # densidade de obstáculos n = #obs / área
+    ys_mean = []   # média normalizada por N_P
+    ys_std  = []   # desvio normalizado por N_P
 
     for obs_folder in obs_list:
-        pasta_nc = base_path / obs_folder / nc_folder
-        todos_os_valores = []
+        pasta_obs = base_path / obs_folder
+        if not pasta_obs.exists():
+            print(f"⚠ Pasta não encontrada: {pasta_obs}")
+            continue
 
-        if pasta_nc.is_dir():
-            for i in range(100):
-                pasta_run = pasta_nc / f"run_{i:02d}"
-                arquivo = pasta_run / "inaccessible_preys.txt"
-                if arquivo.exists():
-                    with open(arquivo, "r") as f:
-                        conteudo = f.read().strip()
+        subpastas = sorted([p for p in pasta_obs.iterdir() if p.is_dir()])
+        if not subpastas:
+            print(f"⚠ Nenhuma subpasta encontrada em {pasta_obs}")
+            continue
+        pasta_dentro = subpastas[0]
+
+        valores_finais_runs = []
+        for i in range(NUM_RUNS):
+            pasta_run = pasta_dentro / f"run_{i:02d}"
+            arquivo = pasta_run / "inaccessible_preys.txt"
+            if arquivo.exists():
+                conteudo = arquivo.read_text().split()
+                if conteudo:
                     try:
-                        valores = [float(x) for x in conteudo.split()]
-                        todos_os_valores.extend(valores)
+                        ultimo = float(conteudo[-1])  # usa o valor final do run
+                        valores_finais_runs.append(ultimo)
                     except ValueError:
-                        print(f"⚠ Erro ao converter valores em {arquivo}")
+                        print(f"⚠ Erro ao converter último valor em {arquivo}")
 
-        if todos_os_valores:
-            media = np.mean(todos_os_valores)
-            std = np.std(todos_os_valores)
+        if not valores_finais_runs:
+            print(f"⚠ Sem valores em {pasta_dentro}")
+            continue
 
+        media_bruta = float(np.mean(valores_finais_runs))
+        std_bruto   = float(np.std(valores_finais_runs))
+
+        # extrai #obs do nome "obs_XXXX"
+        try:
             num_obs = int(obs_folder.split("_")[1])
-            n = num_obs / area
-            presas_totais = (area - num_obs) / 2  # <-- depende de CADA obs_folder
+        except Exception:
+            print(f"⚠ Não consegui extrair número de obstáculos de '{obs_folder}'")
+            continue
 
-            obs_normalizados.append(n)
-            medias.append(media)
-            stds.append(std)
-            presas_totais_list.append(presas_totais)  # <-- guarda alinhado
+        # N_P = (área - #obs) / 2  (mesmo para ambas as bases)
+        N_P = total_presas_por_obs(num_obs)
+        if N_P <= 0:
+            print(f"⚠ N_P inválido para {obs_folder}")
+            continue
 
-    if medias:
-        # normaliza ponto a ponto pelo total de presas daquele n (obs)
-        medias_norm = [m / p for m, p in zip(medias, presas_totais_list)]
-        stds_norm   = [s / p for s, p in zip(stds, presas_totais_list)]
+        media_norm = media_bruta / N_P
+        std_norm   = std_bruto   / N_P
 
-        # ordena por densidade n
-        obs_normalizados, medias_norm, stds_norm = zip(
-            *sorted(zip(obs_normalizados, medias_norm, stds_norm))
-        )
+        n = num_obs / area  # densidade de obstáculos no eixo x
 
-        plt.errorbar(obs_normalizados, medias_norm, yerr=stds_norm,
+        xs_n.append(n)
+        ys_mean.append(media_norm)
+        ys_std.append(std_norm)
+
+    if ys_mean:
+        xs_n, ys_mean, ys_std = zip(*sorted(zip(xs_n, ys_mean, ys_std)))
+
+        plt.errorbar(xs_n, ys_mean, yerr=ys_std,
                      fmt='o-', capsize=5, markersize=5,
-                     color=cmap(idx / (len(nc_list) - 1)),
-                     label=f"$N_{{O}}^{{C}} = {nc_folder.split('_')[1]}$")
+                     color=cmap(base_idx / max(1, len(bases) - 1)),
+                     label=label_tex)
 
-# Linha vertical em x = 0.59
-plt.axvline(x=0.59, color='black', linestyle='--', linewidth=1.5, label='$n$ = 0.59')
+# linha de referência ~ limiar de percolação de sítio em rede quadrada
+plt.axvline(x=0.59, color='black', linestyle='--', linewidth=1.5, label='$n \\approx 0.59$')
 
-plt.xlabel("$n$")
-plt.ylabel("Inaccessible_preys")
-plt.title("Curvas normalizadas para diferentes nC")
+plt.xlabel("$\phi$ (densidade de obstáculos)")
+plt.ylabel("Fraç. de presas inacessíveis ($N_{\\text{inacc}}/N_P$)")
+plt.title("$N_C = N_P$  vs  $N_C = 0.5\\,N_P$  ")
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
 plt.tight_layout()
-plt.savefig('test.pdf')
+plt.savefig('inaccessible_preys_normalized_by_half_free.pdf')
 plt.show()
-
-
-
