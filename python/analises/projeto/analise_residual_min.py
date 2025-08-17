@@ -1,40 +1,51 @@
-# === Avaliação Genérica de Modelos + Dummy (sem plots) ===
-# Requisitos: numpy, scipy, statsmodels
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-from dataclasses import dataclass
-from typing import Callable, Dict, Tuple, Optional
 import numpy as np
+import pandas as pd
+from pathlib import Path
+import re
+import matplotlib.pyplot as plt
+
+from typing import Callable, Dict, Tuple, Optional, List
+
 from scipy.optimize import curve_fit
-from scipy.stats import shapiro
-from statsmodels.stats.diagnostic import het_breuschpagan
+from scipy.stats import shapiro, chi2
 import statsmodels.api as sm
+from statsmodels.stats.diagnostic import het_breuschpagan
 
-# --------------------- Modelos prontos ---------------------
+# ============================
+# Modelos e utilidades gerais
+# ============================
 
-@dataclass
 class ModelSpec:
-    name: str
-    func: Callable[[np.ndarray, np.ndarray], np.ndarray]  # f(x, *theta) -> y
-    p0: Optional[Tuple[float, ...]] = None                # chute inicial
-    param_names: Optional[Tuple[str, ...]] = None         # nomes dos parâmetros
+    def __init__(self, name: str, func: Callable, p0=None, param_names=None):
+        self.name = name
+        self.func = func
+        self.p0 = p0
+        self.param_names = param_names
 
-# Exemplos de funções de modelo (x pode ser 1D ou matriz com shape (n, d))
 def _ensure_1d(x):
     x = np.asarray(x)
-    if x.ndim == 2 and x.shape[1] == 1: x = x.ravel()
+    if x.ndim == 2 and x.shape[1] == 1:
+        x = x.ravel()
     return x
 
 def linear_f(x, a, b):
-    x = _ensure_1d(x); return a + b*x
+    x = _ensure_1d(x)
+    return a + b*x
 
 def exp_f(x, A, tau):
-    x = _ensure_1d(x); return A * np.exp(-x / tau)
+    x = _ensure_1d(x)
+    return A * np.exp(-x / tau)
 
-def power_f(x, k, a):
-    x = _ensure_1d(x); return k * np.power(x, a)
+def power_f(t, k, a, eps=1e-9):
+    t = np.asarray(t, dtype=float)
+    return k * np.power(t + eps, a)
 
 def logistic_f(x, L, k, x0):
-    x = _ensure_1d(x); return L / (1 + np.exp(-k*(x - x0)))
+    x = _ensure_1d(x)
+    return L / (1 + np.exp(-k*(x - x0)))
 
 BUILTINS: Dict[str, ModelSpec] = {
     "linear":   ModelSpec("linear",   linear_f,   p0=(0.0, 1.0),         param_names=("a","b")),
@@ -43,14 +54,132 @@ BUILTINS: Dict[str, ModelSpec] = {
     "logistic": ModelSpec("logistic", logistic_f, p0=(1.0, 1.0, 0.0),    param_names=("L","k","x0")),
 }
 
-# --------------------- Ajuste + Métricas ---------------------
+def fit_model(x, y, spec: ModelSpec, bounds=None) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Ajusta f(x,*theta) com curve_fit e retorna (params, yhat).
+    Com multistart robusto para o EXPONENCIAL, evitando τ gigante (reta).
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = np.isfinite(x) & np.isfinite(y) & (y > 0)
+    x = x[mask]; y = y[mask]
+    if x.size < 3:
+        raise ValueError("Pontos insuficientes após filtro (>0).")
 
-def fit_model(x, y, spec: ModelSpec) -> Tuple[np.ndarray, np.ndarray]:
-    """Ajusta f(x,*theta) com curve_fit e retorna (params, yhat)."""
-    x = np.asarray(x); y = np.asarray(y)
-    params, _ = curve_fit(spec.func, x, y, p0=spec.p0, maxfev=10000)
-    yhat = spec.func(x, *params)
-    return params, yhat
+    # default para modelos não tratados abaixo
+    if bounds is None:
+        bounds = (-np.inf, np.inf)
+
+    # ---------- EXPONENCIAL COM MULTI-START ROBUSTO ----------
+    if spec.name == "exp":
+        # shift do tempo para estabilizar (não altera tau; só reparametriza A)
+        x0 = float(np.min(x))
+        z = x - x0
+        dz = float(np.max(z) - np.min(z))
+        if dz <= 0:
+            dz = 1.0
+
+        # teto de tau (evita "reta"); ajuste o fator se necessário
+        tau_max = max(1e-6, 20.0 * dz)  # experimente 10, 20, 50...
+        lb = [1e-12, 1e-6]
+        ub = [np.inf, tau_max]
+
+        # função reparametrizada com shift
+        def exp_shifted(z_, A, tau):
+            return A * np.exp(-z_ / tau)
+
+        # candidatos para A0
+        # A ~ nível inicial; também tentamos y_max e quantis altos para ser robusto
+        try:
+            y0 = y[np.argmin(z)]  # valor mais à esquerda
+        except Exception:
+            y0 = y[0]
+        A_cands = [y0, np.max(y), np.percentile(y, 90)]
+
+        # candidato para tau via razão entre extremos (se monotônico decrescente)
+        if y[-1] < y[0]:
+            ratio = y[0] / max(y[-1], 1e-12)
+            if ratio > 1.0:
+                tau_ratio = dz / max(np.log(ratio), 1e-9)
+            else:
+                tau_ratio = dz  # quase plano
+        else:
+            tau_ratio = dz  # fallback
+
+        # grade de taus (clipada) + alguns múltiplos/fracionários
+        tau_grid = np.array([
+            tau_ratio/4, tau_ratio/2, tau_ratio, 2*tau_ratio, 4*tau_ratio,
+            dz/8, dz/4, dz/2, dz, 2*dz, 4*dz
+        ], dtype=float)
+        tau_grid = np.unique(np.clip(tau_grid, 1e-6, tau_max))
+
+        best = None
+        # multi-start: tenta várias combinações de (A0, tau0)
+        for A0 in A_cands:
+            if not np.isfinite(A0) or A0 <= 0:
+                continue
+            for tau0 in tau_grid:
+                try:
+                    popt, _ = curve_fit(
+                        lambda zz, AA, TT: exp_shifted(zz, AA, TT),
+                        z, y,
+                        p0=(float(A0), float(tau0)),
+                        bounds=(lb, ub),
+                        maxfev=20000
+                    )
+                    yhat = exp_shifted(z, *popt)
+                    rss = float(np.sum((y - yhat)**2))
+                    if (best is None) or (rss < best[0]):
+                        best = (rss, popt, yhat)
+                except Exception:
+                    # tenta próxima semente
+                    continue
+
+        # fallback: ajuste log-linear para inicializar e refina
+        if best is None:
+            try:
+                slope, intercept = np.polyfit(z, np.log(y), 1)
+                A0 = float(np.exp(intercept))
+                tau0 = float(max(-1.0/slope, 1e-6)) if slope != 0 else dz
+                tau0 = float(np.clip(tau0, 1e-6, tau_max))
+                popt, _ = curve_fit(
+                    lambda zz, AA, TT: exp_shifted(zz, AA, TT),
+                    z, y,
+                    p0=(A0, tau0),
+                    bounds=(lb, ub),
+                    maxfev=20000
+                )
+                yhat = exp_shifted(z, *popt)
+                best = (float(np.sum((y - yhat)**2)), popt, yhat)
+            except Exception:
+                # último fallback: devolve algo simples
+                popt = np.array([np.mean(y), dz], dtype=float)
+                yhat = exp_shifted(z, *popt)
+                best = (float(np.sum((y - yhat)**2)), popt, yhat)
+
+        params = best[1]
+        yhat = best[2]
+        return params, yhat
+
+    # ---------- POTÊNCIA (mantém sua lógica atual, com p0 seguro) ----------
+    elif spec.name == "power":
+        def power_safe(t, k, a, eps=1e-9):
+            return k * np.power(t + eps, a)
+        if bounds is None or (isinstance(bounds, tuple) and bounds == (-np.inf, np.inf)):
+            bounds = ([0.0, -np.inf], [np.inf, np.inf])
+        p0 = (float(max(y[0], 1e-12)), -1.0)
+        spec = ModelSpec(spec.name, power_safe, p0=p0, param_names=spec.param_names)
+        params, _ = curve_fit(spec.func, x, y, p0=p0, bounds=bounds, maxfev=10000)
+        yhat = spec.func(x, *params)
+        return params, yhat
+
+    # ---------- OUTROS MODELOS ----------
+    else:
+        p0 = spec.p0
+        params, _ = curve_fit(spec.func, x, y, p0=p0, bounds=bounds, maxfev=10000)
+        yhat = spec.func(x, *params)
+        return params, yhat
+
 
 def metrics(y, yhat) -> Dict[str, float]:
     y = np.asarray(y); yhat = np.asarray(yhat)
@@ -74,7 +203,6 @@ def residual_tests(y, yhat, exog="x", x=None) -> Dict[str, float]:
         X = sm.add_constant(np.asarray(yhat))
     else:
         if x is None:
-            # fallback: usa yhat
             X = sm.add_constant(np.asarray(yhat))
         else:
             X = np.asarray(x)
@@ -85,27 +213,37 @@ def residual_tests(y, yhat, exog="x", x=None) -> Dict[str, float]:
     return {"DW": float(dw), "BP_p": float(bp_p), "SW_p": float(sw_p)}
 
 def aic_bic_from_rss(rss: float, n: int, k: int) -> Tuple[float, float]:
-    """AIC/BIC de um modelo com k parâmetros (incluindo intercepto, se houver)."""
     if n <= 0 or rss <= 0: return (np.nan, np.nan)
     aic = n*np.log(rss/n) + 2*k
     bic = n*np.log(rss/n) + k*np.log(n)
     return float(aic), float(bic)
 
-# --------------------- Dummy constante + Comparação ---------------------
-
 def dummy_constant(y):
-    return np.full_like(np.asarray(y, dtype=float), float(np.mean(y)))
+    """Prevê sempre a média de y."""
+    return np.full_like(y, np.mean(y), dtype=float)
 
-def compare_to_dummy(x, y, yhat_model, k_model: int, bp_exog="x") -> Dict[str, float]:
-    """Compara modelo ajustado vs dummy constante: R2, RMSE, ΔAIC, ΔBIC, p-tests do modelo."""
+def compare_to_dummy(
+    x, y, yhat_model, k_model: int,
+    bp_exog="x",
+    dummy_func=None, dummy_params=None, k_dummy=None
+) -> Dict[str, float]:
     n = len(y)
-    yhat_dummy = dummy_constant(y)
+
+    if dummy_func is None:
+        yhat_dummy = dummy_constant(y)
+        k_dummy = 1 if k_dummy is None else k_dummy
+    else:
+        if dummy_params is None:
+            raise ValueError("Se dummy_func for fornecido, dummy_params também deve ser.")
+        yhat_dummy = dummy_func(x, *dummy_params)
+        if k_dummy is None:
+            k_dummy = len(dummy_params)
+
     met_model = metrics(y, yhat_model)
     met_dummy = metrics(y, yhat_dummy)
 
-    # AIC/BIC (k_model = nº parâmetros livres do modelo; dummy tem k=1)
     aic_m, bic_m = aic_bic_from_rss(met_model["RSS"], n, k_model)
-    aic_d, bic_d = aic_bic_from_rss(met_dummy["RSS"], n, 1)
+    aic_d, bic_d = aic_bic_from_rss(met_dummy["RSS"], n, k_dummy)
     dAIC = aic_m - aic_d
     dBIC = bic_m - bic_d
 
@@ -121,299 +259,299 @@ def compare_to_dummy(x, y, yhat_model, k_model: int, bp_exog="x") -> Dict[str, f
     }
     return {k: (float(v) if v is not None else v) for k, v in out.items()}
 
-# --------------------- Pipeline principal ---------------------
-
-def evaluate(x, y,
-             model: str | ModelSpec = "exp",
-             bp_exog: str = "x"):
-    """
-    x, y: dados
-    model: nome em BUILTINS ('linear','exp','power','logistic') OU uma ModelSpec custom
-    bp_exog: 'x' usa X no Breusch–Pagan; 'yhat' usa yhat como regressora da variância
-    """
+def evaluate(
+    x, y,
+    model: str or ModelSpec = "exp",
+    bp_exog: str = "x",
+    dummy: str or ModelSpec = None,
+    dummy_params=None,
+    k_dummy: int = None):
     if isinstance(model, str):
         spec = BUILTINS[model]
     else:
         spec = model
 
-    # Ajuste
     params, yhat = fit_model(x, y, spec)
-    # nº de parâmetros (p/ AIC/BIC): usa tamanho do vetor de parâmetros do modelo
     k_model = len(params)
-
-    # Métricas + testes do modelo
     mets = metrics(y, yhat)
     tests = residual_tests(y, yhat, exog=bp_exog, x=x)
 
-    # Comparação com dummy
-    comp = compare_to_dummy(x, y, yhat, k_model=k_model, bp_exog=bp_exog)
+    if dummy is not None:
+        if isinstance(dummy, str):
+            if dummy == "power":
+                spec_dummy = ModelSpec("power", power_f, p0=(y[0], -1.0), param_names=("k","a"))
+            elif dummy == "exp":
+                spec_dummy = BUILTINS["exp"]
+            else:
+                spec_dummy = BUILTINS[dummy]
+        else:
+            spec_dummy = dummy
 
-    result = {
+        if dummy_params is None:
+            dummy_params, yhat_dummy = fit_model(x, y, spec_dummy)
+        else:
+            yhat_dummy = spec_dummy.func(x, *dummy_params)
+
+        if k_dummy is None:
+            k_dummy = len(dummy_params)
+
+        comp = compare_to_dummy(
+            x, y, yhat_model=yhat, k_model=k_model,
+            bp_exog=bp_exog,
+            dummy_func=spec_dummy.func, dummy_params=dummy_params, k_dummy=k_dummy
+        )
+    else:
+        comp = compare_to_dummy(x, y, yhat, k_model=k_model, bp_exog=bp_exog)
+
+    return {
         "model_name": spec.name,
         "params": dict(zip(spec.param_names or tuple(f"p{i}" for i in range(len(params))), params)),
         "metrics": mets,
         "tests": tests,
         "vs_dummy": comp,
+        "yhat": yhat,
     }
-    return result
 
+# ============================
+# I/O e varredura de arquivos
+# ============================
 
-import re
-from pathlib import Path
-import numpy as np
-import pandas as pd
-from typing import List, Dict, Optional
-
-# mapeia chaves de cenário -> possíveis subpastas dentro de obs/s_obs
-MODEL_CATALOG: Dict[str, List[str]] = {
-    "Nc=Np":      ["Nc=Np"],
-    "Nc=0.5Np":   ["Nc=Np*0.5", "Nc= Np*0.5"],
-    # adicione mais se precisar
-}
-
-# --- já existentes ---
 RE_RUN = re.compile(r"_run_(\d+)_presas_por_passo\.csv$")
 
-def find_obs_dir(base: Path, n_obs: int) -> Optional[Path]:
-    """Procura por .../obs_{n_obs} ou .../s_obs_{n_obs} dentro de base."""
-    cand = [base / f"obs_{n_obs}", base / f"s_obs_{n_obs}"]
-    for d in cand:
-        if d.is_dir():
-            return d
-    return None
+def collect_runs(scen_dir: Path) -> List[Path]:
+    return sorted([p for p in scen_dir.rglob("*_run_*_presas_por_passo.csv") if p.is_file()])
 
-# --- NOVA: listar subpastas candidatas (cenários) ---
-def list_scenario_dirs(obs_dir: Path) -> list[Path]:
-    """Lista apenas as subpastas diretas (cenários) dentro de obs_dir."""
-    return [d for d in obs_dir.iterdir() if d.is_dir()]
-
-# --- NOVA: escolher cenário automaticamente a partir de um run específico ---
-def find_scenario_dir_auto(obs_dir: Path, run: int | str = "latest") -> Path:
-    """
-    Procura, entre as subpastas de obs_dir, aquela que contém:
-      - se run == 'latest': algum CSV *_run_*_presas_por_passo.csv (pega a mais recente)
-      - se run é int: pelo menos um CSV com _run_{run}_... (escolhe a mais recente entre as que têm esse run)
-    Retorna o diretório do cenário escolhido.
-    """
-    candidates = list_scenario_dirs(obs_dir)
-    best_dir: Path | None = None
-    best_time = -1.0
-
-    for d in candidates:
-        csvs = list(d.rglob("*_run_*_presas_por_passo.csv"))
-        if not csvs:
-            continue
-
-        if isinstance(run, str) and run.lower() == "latest":
-            # pega o arquivo mais recente de cada subpasta e escolhe a subpasta com o arquivo mais novo
-            p = max(csvs, key=lambda p: p.stat().st_mtime)
-            t = p.stat().st_mtime
-            if t > best_time:
-                best_time = t
-                best_dir = d
-        else:
-            # filtra pelos arquivos que têm exatamente esse run
-            wanted = []
-            for p in csvs:
-                m = RE_RUN.search(p.name)
-                if m and int(m.group(1)) == int(run):
-                    wanted.append(p)
-            if not wanted:
-                continue
-            p = max(wanted, key=lambda p: p.stat().st_mtime)
-            t = p.stat().st_mtime
-            if t > best_time:
-                best_time = t
-                best_dir = d
-
-    if best_dir is None:
-        if isinstance(run, str) and run.lower() == "latest":
-            raise FileNotFoundError("Nenhuma subpasta com arquivos *_run_*_presas_por_passo.csv encontrada.")
-        else:
-            raise FileNotFoundError(f"Nenhuma subpasta contém arquivos do run {run}.")
-    return best_dir
-
-def load_xy_from_run(scen_dir: Path, run: int | str = "latest") -> tuple[np.ndarray, np.ndarray]:
-    """Carrega x=passo, y=presas_vivas (>0) do run escolhido (exato ou 'latest') dentro de scen_dir."""
-    csvs = list(scen_dir.rglob("*_run_*_presas_por_passo.csv"))
-    if not csvs:
-        raise FileNotFoundError(f"Nenhum CSV de run encontrado em {scen_dir}")
-
-    if isinstance(run, str) and run.lower() == "latest":
-        path = max(csvs, key=lambda p: p.stat().st_mtime)
-    else:
-        candidatos = []
-        for p in csvs:
-            m = RE_RUN.search(p.name)
-            if m and int(m.group(1)) == int(run):
-                candidatos.append(p)
-        if not candidatos:
-            raise FileNotFoundError(f"Run {run} não encontrado em {scen_dir}")
-        path = max(candidatos, key=lambda p: p.stat().st_mtime)
-
+def load_xy_from_csv(path: Path) -> tuple[np.ndarray, np.ndarray]:
     df = pd.read_csv(path).sort_values("passo")
     if "passo" not in df.columns or "presas_vivas" not in df.columns:
         raise ValueError(f"CSV {path.name} não tem colunas 'passo' e 'presas_vivas'.")
-
     c = df["presas_vivas"].to_numpy(float)
     t = df["passo"].to_numpy(float)
     mask = np.isfinite(c) & np.isfinite(t) & (c > 0)
-    x = t[mask]
-    y = c[mask]
+    x = t[mask]; y = c[mask]
     if x.size < 3:
-        raise ValueError(f"Pontos insuficientes após filtro (>0) no arquivo {path.name}.")
+        raise ValueError(f"Pontos insuficientes após filtro (>0) em {path.name}.")
     return x, y
 
+# ============================
+# Combinação de p-values
+# ============================
 
+def fisher_combined_p(pvals: np.ndarray) -> float:
+    """Combina p-values (BP ou SW) de múltiplos runs via método de Fisher."""
+    ps = np.asarray(pvals, dtype=float)
+    ps = ps[np.isfinite(ps)]
+    ps = ps[(ps > 0.0) & (ps <= 1.0)]
+    if ps.size == 0:
+        return float('nan')
+    T = -2.0 * np.sum(np.log(np.clip(ps, 1e-300, 1.0)))
+    df = 2 * ps.size
+    return float(chi2.sf(T, df))
 
-def interpretar_resultados(res):
-    interpretacoes = []
+# ============================
+# Pipeline multi-runs + plot + VALORES FINAIS por modelo
+# ============================
 
-    # Modelo principal
-    interpretacoes.append("📊 Modelo principal:")
-    r2 = res["metrics"].get("R2", None)
-    if r2 is not None:
-        if r2 > 0.9:
-            interpretacoes.append(f"  - R² = {r2:.3f} → Excelente ajuste.")
-        elif r2 > 0.7:
-            interpretacoes.append(f"  - R² = {r2:.3f} → Bom ajuste.")
-        elif r2 > 0.5:
-            interpretacoes.append(f"  - R² = {r2:.3f} → Ajuste moderado.")
-        else:
-            interpretacoes.append(f"  - R² = {r2:.3f} → Ajuste fraco.")
+def analisar_cenario(
+    base: Path,
+    SCENARIO: str,
+    n_obs: int,
+    salvar_csv: bool = True,
+    salvar_fig: bool = True,
+    out_dir: Optional[Path] = None,
+    alpha: float = 0.05,
+):
+    """
+    Lê todos os runs do cenário, ajusta exp e potência, agrega estatísticas,
+    plota a curva média e imprime VALORES FINAIS agregados (por Fisher) para
+    os dois modelos (exponencial e potência).
+    """
+    if out_dir is None:
+        out_dir = base / "resultados_comb"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    dw = res["tests"].get("DW", None)
-    if dw is not None:
-        if 1.8 <= dw <= 2.2:
-            interpretacoes.append(f"  - DW = {dw:.3f} → Sem autocorrelação significativa.")
-        elif dw < 1.8:
-            interpretacoes.append(f"  - DW = {dw:.3f} → Autocorrelação positiva.")
-        else:
-            interpretacoes.append(f"  - DW = {dw:.3f} → Autocorrelação negativa.")
+    scen_dir = base / SCENARIO / (f"s_obs_{n_obs}" if n_obs != 0 else "s_obs_00")
+    if not scen_dir.exists():
+        raise FileNotFoundError(f"Caminho não encontrado: {scen_dir}")
 
-    bp = res["tests"].get("BP_p", None)
-    if bp is not None:
-        if bp > 0.05:
-            interpretacoes.append(f"  - BP_p = {bp:.3g} → Sem evidência de heteroscedasticidade.")
-        else:
-            interpretacoes.append(f"  - BP_p = {bp:.3g} → Evidência de heteroscedasticidade.")
+    arquivos = collect_runs(scen_dir)
+    if not arquivos:
+        raise FileNotFoundError(f"Nenhum CSV *_run_*_presas_por_passo.csv em {scen_dir}")
 
-    sw = res["tests"].get("SW_p", None)
-    if sw is not None:
-        if sw > 0.05:
-            interpretacoes.append(f"  - SW_p = {sw:.3g} → Resíduos normais.")
-        else:
-            interpretacoes.append(f"  - SW_p = {sw:.3g} → Resíduos não normais.")
+    series_list = []
+    rows = []
 
-    # Dummy
-    interpretacoes.append("\n📊 Dummy constante:")
-    r2_d = res["vs_dummy"].get("R2_dummy", None)
-    if r2_d is not None:
-        if r2_d > 0.9:
-            interpretacoes.append(f"  - R² = {r2_d:.3f} → Excelente ajuste.")
-        elif r2_d > 0.7:
-            interpretacoes.append(f"  - R² = {r2_d:.3f} → Bom ajuste.")
-        elif r2_d > 0.5:
-            interpretacoes.append(f"  - R² = {r2_d:.3f} → Ajuste moderado.")
-        else:
-            interpretacoes.append(f"  - R² = {r2_d:.3f} → Ajuste fraco.")
+    # coletores de parâmetros (opcional)
+    exp_params = []
+    pow_params = []
 
-    dw_d = res["vs_dummy"].get("DW_dummy", None)
-    if dw_d is not None:
-        if 1.8 <= dw_d <= 2.2:
-            interpretacoes.append(f"  - DW = {dw_d:.3f} → Sem autocorrelação significativa.")
-        elif dw_d < 1.8:
-            interpretacoes.append(f"  - DW = {dw_d:.3f} → Autocorrelação positiva.")
-        else:
-            interpretacoes.append(f"  - DW = {dw_d:.3f} → Autocorrelação negativa.")
+    for path in arquivos:
+        try:
+            x, y = load_xy_from_csv(path)
+        except Exception:
+            continue
 
-    bp_d = res["vs_dummy"].get("BP_p_dummy", None)
-    if bp_d is not None:
-        if bp_d > 0.05:
-            interpretacoes.append(f"  - BP_p = {bp_d:.3g} → Sem evidência de heteroscedasticidade.")
-        else:
-            interpretacoes.append(f"  - BP_p = {bp_d:.3g} → Evidência de heteroscedasticidade.")
+        # Ajustes
+        res_exp = evaluate(x, y, model="exp",   dummy=None)
+        res_pow = evaluate(x, y, model="power", dummy=None)
 
-    sw_d = res["vs_dummy"].get("SW_p_dummy", None)
-    if sw_d is not None:
-        if sw_d > 0.05:
-            interpretacoes.append(f"  - SW_p = {sw_d:.3g} → Resíduos normais.")
-        else:
-            interpretacoes.append(f"  - SW_p = {sw_d:.3g} → Resíduos não normais.")
+        # parâmetros (opcional, para plot de médias)
+        A  = res_exp["params"].get("A", np.nan)
+        tau= res_exp["params"].get("tau", np.nan)
+        k  = res_pow["params"].get("k", np.nan)
+        a  = res_pow["params"].get("a", np.nan)
+        exp_params.append((A, tau))
+        pow_params.append((k, a))
 
-    return interpretacoes
+        # armazena métricas/testes de ambos
+        linha = {
+            "arquivo": path.name,
+
+            "A": A, "tau": tau, "R2_exp": res_exp["metrics"]["R2"],
+            "DW_exp": res_exp["tests"]["DW"],
+            "BP_p_exp": res_exp["tests"]["BP_p"],
+            "SW_p_exp": res_exp["tests"]["SW_p"],
+
+            "k": k, "a": a, "R2_pow": res_pow["metrics"]["R2"],
+            "DW_pow": res_pow["tests"]["DW"],
+            "BP_p_pow": res_pow["tests"]["BP_p"],
+            "SW_p_pow": res_pow["tests"]["SW_p"],
+        }
+        rows.append(linha)
+
+        # série para curva média
+        df_tmp = pd.read_csv(path)[["passo", "presas_vivas"]]
+        df_tmp = df_tmp[df_tmp["presas_vivas"] > 0].set_index("passo").sort_index()
+        series_list.append(df_tmp["presas_vivas"])
+
+    if not rows or not series_list:
+        raise RuntimeError("Nenhum run válido após filtros.")
+
+    df_runs = pd.DataFrame(rows).sort_values("arquivo")
+
+    # Médias de parâmetros e R² (para título/plot)
+    A_med, tau_med = np.nanmean(exp_params, axis=0)
+    k_med, a_med   = np.nanmean(pow_params, axis=0)
+    r2_exp_med = float(np.nanmean(df_runs["R2_exp"]))
+    r2_pow_med = float(np.nanmean(df_runs["R2_pow"]))
+
+    # Curva média real e std
+    df_all = pd.concat(series_list, axis=1)
+    y_mean = df_all.mean(axis=1)
+    y_std  = df_all.std(axis=1)
+    x_vals = y_mean.index.values.astype(float)
+
+    # Plot (médias + ajustes médios)
+    plt.figure(figsize=(8,6))
+    plt.errorbar(x_vals, y_mean.values, yerr=y_std.values,
+                 fmt='o', capsize=3, markersize=3, alpha=0.7,
+                 label="Dados médios ±1σ")
+
+    x_fit = np.linspace(x_vals.min(), x_vals.max(), 300)
+    plt.plot(x_fit, exp_f(x_fit, A_med, tau_med), '-', label=f"Exp médio: A={A_med:.2g}, τ={tau_med:.2g}, R²≈{r2_exp_med:.3f}")
+    plt.plot(x_fit, power_f(x_fit, k_med, a_med), '-', label=f"Potência média: k={k_med:.2g}, a={a_med:.2g}, R²≈{r2_pow_med:.3f}")
+    plt.xlabel("Passo"); plt.ylabel("Presas vivas")
+    plt.title(f"{SCENARIO} • s_obs_{n_obs:02d}" if n_obs==0 else f"{SCENARIO} • s_obs_{n_obs}")
+    plt.grid(True, alpha=0.3); plt.legend(); plt.tight_layout()
+
+    if salvar_fig:
+        fig_base = f"media_{SCENARIO.replace('/','-')}_s_obs_{n_obs if n_obs!=0 else '00'}"
+        plt.savefig(out_dir / f"{fig_base}.pdf", bbox_inches="tight")
+        plt.savefig(out_dir / f"{fig_base}.png", bbox_inches="tight", dpi=300)
+    plt.show()
+
+    if salvar_csv:
+        csv_name = f"resultados_por_run_{SCENARIO.replace('/','-')}_s_obs_{n_obs if n_obs!=0 else '00'}.csv"
+        df_runs.to_csv(out_dir / csv_name, index=False)
+
+    # ============== VALORES FINAIS (agregados por Fisher) ==============
+    # EXPONENCIAL
+    p_bp_global_exp = fisher_combined_p(df_runs["BP_p_exp"].values)
+    p_sw_global_exp = fisher_combined_p(df_runs["SW_p_exp"].values)
+    dw_vals_exp = df_runs["DW_exp"].values
+    dw_med_exp = float(np.nanmean(dw_vals_exp))
+    dw_frac_ok_exp = float(np.mean((dw_vals_exp >= 1.8) & (dw_vals_exp <= 2.2)))
+
+    pass_norm_exp = (p_sw_global_exp > alpha)
+    pass_homo_exp = (p_bp_global_exp > alpha)
+    pass_dw_exp   = (1.8 <= dw_med_exp <= 2.2)
+    decisao_exp = "APROVADO" if (pass_norm_exp and pass_homo_exp and pass_dw_exp) else "REPROVADO"
+
+    # POTÊNCIA
+    p_bp_global_pow = fisher_combined_p(df_runs["BP_p_pow"].values)
+    p_sw_global_pow = fisher_combined_p(df_runs["SW_p_pow"].values)
+    dw_vals_pow = df_runs["DW_pow"].values
+    dw_med_pow = float(np.nanmean(dw_vals_pow))
+    dw_frac_ok_pow = float(np.mean((dw_vals_pow >= 1.8) & (dw_vals_pow <= 2.2)))
+
+    pass_norm_pow = (p_sw_global_pow > alpha)
+    pass_homo_pow = (p_bp_global_pow > alpha)
+    pass_dw_pow   = (1.8 <= dw_med_pow <= 2.2)
+    decisao_pow = "APROVADO" if (pass_norm_pow and pass_homo_pow and pass_dw_pow) else "REPROVADO"
+
+    # Prints finais (um bloco por modelo)
+    print("\n=== VALOR FINAL da análise de hipóteses — EXPONENCIAL (α = {:.3f}) ===".format(alpha))
+    print("Normalidade (Shapiro):             p_global = {:.3g}  → {}".format(
+        p_sw_global_exp, "aceita H0 (normais)" if pass_norm_exp else "rejeita H0 (não normais)"))
+    print("Homoscedasticidade (Breusch–Pagan): p_global = {:.3g}  → {}".format(
+        p_bp_global_exp, "aceita H0 (homoscedásticos)" if pass_homo_exp else "rejeita H0 (heteroscedasticidade)"))
+    print("Autocorrelação (Durbin–Watson):     DW_médio = {:.3f} (fração em [1.8,2.2]: {:>.1%}) → {}".format(
+        dw_med_exp, dw_frac_ok_exp, "sem autocorr. significativa (médio≈2)" if pass_dw_exp else "possível autocorr."))
+    print("Conclusão geral (EXP): {}".format(decisao_exp))
+
+    print("\n=== VALOR FINAL da análise de hipóteses — POTÊNCIA (α = {:.3f}) ===".format(alpha))
+    print("Normalidade (Shapiro):             p_global = {:.3g}  → {}".format(
+        p_sw_global_pow, "aceita H0 (normais)" if pass_norm_pow else "rejeita H0 (não normais)"))
+    print("Homoscedasticidade (Breusch–Pagan): p_global = {:.3g}  → {}".format(
+        p_bp_global_pow, "aceita H0 (homoscedásticos)" if pass_homo_pow else "rejeita H0 (heteroscedasticidade)"))
+    print("Autocorrelação (Durbin–Watson):     DW_médio = {:.3f} (fração em [1.8,2.2]: {:>.1%}) → {}".format(
+        dw_med_pow, dw_frac_ok_pow, "sem autocorr. significativa (médio≈2)" if pass_dw_pow else "possível autocorr."))
+    print("Conclusão geral (POT): {}".format(decisao_pow))
+
+    return {
+        "df_runs": df_runs,
+        "x_mean": x_vals,
+        "y_mean": y_mean.values,
+        "y_std": y_std.values,
+        "params_mean": {"A": A_med, "tau": tau_med, "k": k_med, "a": a_med},
+        "r2_mean": {"exp": r2_exp_med, "power": r2_pow_med},
+        "final_exp": {
+            "alpha": alpha,
+            "p_global_shapiro": p_sw_global_exp,
+            "p_global_breusch_pagan": p_bp_global_exp,
+            "dw_medio": dw_med_exp,
+            "dw_frac_intervalo_1p8_2p2": dw_frac_ok_exp,
+            "decisao": decisao_exp,
+        },
+        "final_power": {
+            "alpha": alpha,
+            "p_global_shapiro": p_sw_global_pow,
+            "p_global_breusch_pagan": p_bp_global_pow,
+            "dw_medio": dw_med_pow,
+            "dw_frac_intervalo_1p8_2p2": dw_frac_ok_pow,
+            "decisao": decisao_pow,
+        }
+    }
+
+# ============================
+# Execução
+# ============================
 
 if __name__ == "__main__":
-
     base = Path.home() / "Dados_Doc"
-    n_obs = 0  # pode ser 0, 1638, 3276, ...
-    SCENARIO = "Nc=Np*0.5"
-    RUN = 30  # número inteiro
 
-    # Ajuste do caminho do cenário
-    if SCENARIO == "Nc=Np*0.5":
-        scen_dir = base / "Nc=Np*0.5"
-    else:
-        scen_dir = base / SCENARIO
+    # --- ajuste aqui ---
+    SCENARIO = "Nc=Np*0.5"        # ex.: "Nc=Np" ou "Nc=Np*0.5"
+    n_obs = 14745           # 0 -> usa s_obs_00; caso contrário s_obs_{n_obs}
+    ALPHA = 0.05              # nível de significância
+    # --------------------
 
-    if not scen_dir.exists():
-        raise FileNotFoundError(f"Cenário '{SCENARIO}' não encontrado em {base}")
-
-    # Nome da pasta s_obs
-    if n_obs == 0:
-        obs_dir = scen_dir / "s_obs_00"
-    else:
-        obs_dir = scen_dir / f"s_obs_{n_obs}"
-
-    if not obs_dir.exists():
-        raise FileNotFoundError(f"{obs_dir.name} não encontrado em {scen_dir}")
-
-    # Busca pelo CSV do run
-    arquivo = next(obs_dir.glob(f"*run_{RUN}_presas_por_passo.csv"), None)
-    if arquivo is None:
-        raise FileNotFoundError(f"Nenhum arquivo para run_{RUN} encontrado em {obs_dir}")
-
-    
-    # Leitura e debug das colunas
-    print(f"Lendo {arquivo}...")
-    df = pd.read_csv(arquivo)
-    print("Colunas encontradas:", df.columns.tolist())
-    print(df)
-    
-    df = pd.read_csv(arquivo)
-    x = df["passo"].to_numpy()
-    y = df["presas_vivas"].to_numpy()
-
-    # 🔹 Remove todos os pontos com presas_vivas = 0
-    mask = y > 0
-    x = x[mask]
-    y = y[mask]
-
-    """
-    print("x:", x)
-    print("y:", y)
-    print("n pontos:", len(x))
-"""
-    # ---------- escolha do FIT ----------
-    # pode ser: "exp" | "linear" | "power" | "logistic" | uma ModelSpec custom
-    MODEL_NAME = "exp"
-
-    # opcional: para Breusch–Pagan, usar 'x' (recom.) ou 'yhat' como regressora da variância
-    BP_EXOG = "x"
-
-    # avalia
-    res = evaluate(x, y, model=MODEL_NAME, bp_exog=BP_EXOG)
-"""
-    # ---------- saída resumida ----------
-    print(f"\n=== Modelo: {res['model_name']} | cenário '{SCENARIO}' | n_obs={n_obs} | run={RUN} ===")
-    print("Parâmetros:", {k: f"{v:.6g}" for k, v in res["params"].items()})
-    print("Métricas:",   {k: f"{v:.6g}" for k, v in res["metrics"].items()})
-    print("Testes:",     {k: f"{v:.6g}" for k, v in res["tests"].items()})
-    print("\n--- Comparação vs Dummy Constante ---")
-    for k, v in res["vs_dummy"].items():
-        print(f"{k}: {v:.6g}")
-        """
-print("\n--- Interpretação automática ---")
-for linha in interpretar_resultados(res):
-    print(linha)
-print("Parâmetros ajustados:", res["params"])
+    _ = analisar_cenario(
+        base=base,
+        SCENARIO=SCENARIO,
+        n_obs=n_obs,
+        salvar_csv=True,
+        salvar_fig=True,
+        out_dir=base / "resultados_comb",
+        alpha=ALPHA,
+    )
