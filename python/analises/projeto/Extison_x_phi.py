@@ -26,7 +26,8 @@ def ler_dat(fp: Path) -> pd.DataFrame:
             names=["run","steps","escapers","seed"], comment="#",
         )
     df["steps"] = pd.to_numeric(df["steps"], errors="coerce")
-    return df.dropna(subset=["steps"])
+    df["escapers"] = pd.to_numeric(df["escapers"], errors="coerce")
+    return df.dropna(subset=["steps","escapers"])
 
 def extrai(padrao: str, texto: str, default=None, cast=int):
     m = re.search(padrao, texto)
@@ -44,9 +45,7 @@ def coletar(base_root: Path, label: str) -> pd.DataFrame:
         fp = cand[0]
 
         df = ler_dat(fp)
-        media = df["steps"].mean()
-        std   = df["steps"].std(ddof=1)
-        n     = len(df)
+        zeros_esc = (df["escapers"] == 0).sum() / 100.0   # <<=== conta zeros e divide
 
         O = extrai(r"_O_(\d+)_", fp.name, default=extrai(r"s_obs_(\d+)$", sdir.name, default=None))
         if O is None:
@@ -58,14 +57,12 @@ def coletar(base_root: Path, label: str) -> pd.DataFrame:
             "pasta": sdir.name,
             "O": int(O),
             "frac_O_L2": O / float(L**2),
-            "n": n,
-            "mean_steps": media,
-            "std_steps": std,
+            "zeros_escapers": zeros_esc,
             "arquivo": str(fp),
         })
     return pd.DataFrame(linhas).sort_values("frac_O_L2").reset_index(drop=True)
 
-# === Coleta para os dois cenários ===
+# === Coleta ===
 tabs = []
 for label, root in roots:
     if root.exists():
@@ -77,50 +74,16 @@ if not tabs:
     raise SystemExit("[!] Nada encontrado em nenhuma raiz.")
 df = pd.concat(tabs, ignore_index=True)
 
-# === Normalização pelo MÁXIMO de cada curva (por cenário) ===
-baselines = df.groupby("cenario")["mean_steps"].max().to_dict()
-print("[info] Máximos por cenário:", baselines)
-
-def norm_row(r):
-    b = baselines.get(r["cenario"], np.nan)
-    if not (isinstance(b, (int,float)) and b > 0):
-        return pd.Series({"mean_norm": np.nan, "std_norm": np.nan})
-    return pd.Series({
-        "mean_norm": r["mean_steps"] / 1,
-        "std_norm":  r["std_steps"]  / 1,
-    })
-
-df[["mean_norm","std_norm"]] = df.apply(norm_row, axis=1)
-
-# === Plot com barras de erro ===
+# === Plot: número de zeros de escapers/100 vs φ ===
 plt.figure(figsize=(8,5))
-
-# leve deslocamento no x pra não sobrepor barras idênticas
-labels = list(df["cenario"].unique())
-
-for lab in labels:
+for lab in df["cenario"].unique():
     dfl = df[df["cenario"] == lab].sort_values("frac_O_L2")
-    x = dfl["frac_O_L2"].values 
-    plt.errorbar(x, dfl["mean_norm"], yerr=dfl["std_norm"],
-                 fmt="o-", capsize=4, markersize=5, label=lab)
+    plt.plot(dfl["frac_O_L2"], dfl["zeros_escapers"], "o-", label=lab)
 
-#plt.axhline(1.0, linestyle="--", linewidth=1)
-plt.ylim(bottom=0)
 plt.xlabel(r"$\phi$")
-plt.ylabel("$TT$")
-plt.title(r"$TT x \phi $")
-plt.axvline(x=0.59, color='black', linestyle='--', linewidth=1.5, label='$\phi \\approx 0.59$')
-plt.grid(True, alpha=0.3)
+plt.ylabel("Zeros escapers / 100")
+#plt.title("Número de vezes que escapers = 0 (por arquivo, dividido por 100)")
 plt.legend(title="Cenário")
+plt.grid(True, alpha=0.3)
 plt.tight_layout()
-
-out_dir = Path("/home/rafarossatto/Dados_Doc")
-out_png = out_dir / f"steps_vs_frac_obst_norm_por_curva_L{L}.png"
-out_csv = out_dir / f"steps_norm_por_curva_L{L}.csv"
-plt.tight_layout()
-plt.show()  # abre a janela e bloqueia até você fechar
-
-print(f"[ok] Figura: {out_png}")
-print(f"[ok] Tabela: {out_csv}")
-
 plt.show()

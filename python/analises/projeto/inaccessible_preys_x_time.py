@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 
 # ---------------------- parâmetros principais ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
-            "obs_8192", "obs_9830", "obs_11468", "obs_13107", "obs_14745"]
+            "obs_8192", "obs_9338", "obs_9502","obs_9666","obs_9830",
+            "obs_9994","obs_10158", "obs_10321","obs_11468", "obs_13107", "obs_14745"]
 
 bases = [
     (r"$N_C = N_P$",      "Nc=Np"),
