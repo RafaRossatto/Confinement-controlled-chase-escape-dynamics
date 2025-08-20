@@ -1,0 +1,55 @@
+---
+title: "Meu Diário de Pesquisa-Tese"
+format: html
+---
+
+## 20/08/2025
+
+- A principio estamos com melhores fitts. Precisa fala com os professores, sobre a questao dos pontos que nao sao iguais.
+- Precisa ver como fazer os testes de hipoteses.
+
+## 08/08/2025
+
+- A principio está certo o programa que gera as tejetórias.
+- Precisa ver se é possivel salvar apenas uma vez os obstátulos, para assim ser mais leve a trajetórias.
+- Fazer um gráfico dos numero de presas inacessiceis em funcao dos numero de obstáculos.
+- Fazer um ajuste das cuevas das presas em funcao do tempo do tipo: ln (c(t)) = ln c_o - (1/tau)t.
+- Onde c_o é o numero inicial de presas e tau vai ser o que a gente vai achar.
+
+## 07/08/2025
+
+- Programas continuan rodando.
+- O que já terminou coloquei na pasta Dados_Doc, no pc do lab.
+- Coloquei na pasta do git os obstaculos, runs e presas inacessiveis de forma comprimida, por conta do tamanho.
+- Assim como coloquei os arquivos para fazer a simulacao atualizada hoje.
+- Precisa comecar a pensar em fazer o programa que gera as tretjórias funcionar.
+- Comecei a modificar o cell_lattice, precusa ajutar o main para começar.
+
+## 05/08/2025
+
+- Atualizei os id do que estava no canapad.
+- Esse s_obs_0, está no cenapad: 287445.ada
+ Esse s_obs_1638, está no cenapad: 287446.ada
+- Esse s_obs_3276, está no cenapad: 287447.ada
+- Esse s_obs_4915, está no cenapad: 2874448.ada
+- Esse s_obs_6553, está no cenapad: 287449.ada
+- Esse s_obs_9830, está no cenapad: 287450.ada
+- Esse s_obs_11486, terminou.
+- Esse s_obs_13107, coloquei no pc do lab.
+
+## 01/08/2025
+
+- Esse s_obs_11486, estava errado, e agora está rodando no pc do lab.
+- Esse s_obs_0, está no cenapad: 287318.ada
+- Esse s_obs_1638, está no cenapad: 287319.ada
+- Esse s_obs_3276, está no cenapad: 287321.ada
+- Esse s_obs_4915, está no cenapad: 287322.ada
+- Esse s_obs_6553, está no cenapad: 287323.ada
+- Esse s_obs_9830, está no cenapad: 287324.ada
+- Esse s_obs_13107, está no cenapad: 287325.ada
+
+## 31/07/2025
+
+- Como esta demorando muito rodar no meu pc, separei as simulacoes em funcao da densidade de obstaculos e coloquei rodar no cenapad, como nao sei se vai funcionar de primeira, só coloquei um para a
+fim de teste: 286989.ada OBS_11486.
+- Se ele rodar de boa, eu coloco os outros. 
