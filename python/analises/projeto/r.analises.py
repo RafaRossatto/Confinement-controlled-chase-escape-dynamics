@@ -6,8 +6,8 @@ import numpy as np
 
 # === Configurações ===
 base = Path.home() / "Dados_Doc" / "resultados_modelos" / "curvas_por_run"
-caso = "Nc_lt_Np"   # escolha: "Nc_eq_Np" ou "Nc_lt_Np"
-n_obs_alvo = 0  # número de obstáculos que você quer analisar
+caso = "Nc_eq_Np"   # escolha: "Nc_eq_Np" ou "Nc_lt_Np"
+n_obs_alvo = 14745  # número de obstáculos que você quer analisar
 
 # Lista de arquivos candidatos
 todos = sorted(base.glob("*_ajuste.csv"))
