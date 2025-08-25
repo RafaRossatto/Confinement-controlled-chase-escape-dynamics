@@ -37,20 +37,31 @@ for arq in arquivos:
 
 df_tau_beta = pd.DataFrame(dados).sort_values("beta_mean")
 
-# === Plot Beta x Tau ===
 plt.figure(figsize=(10,7), dpi=150)
 
-plt.errorbar(
-    df_tau_beta["beta_mean"],df_tau_beta["tau_mean"],
-    xerr=df_tau_beta["beta_std"], yerr=df_tau_beta["tau_std"],
-    fmt="o", capsize=5, label=r"Nc=Np"
+sc = plt.scatter(
+    df_tau_beta["tau_mean"], df_tau_beta["beta_mean"],
+    c=df_tau_beta["frac_obs"],          # cor ~ fração de obstáculos
+    cmap="viridis",                     # colormap
+    s=80,                               # tamanho dos pontos
+    edgecolor="k"                       # borda preta
 )
 
-plt.xlabel(r"$\langle \beta \rangle$")
-plt.ylabel(r"$\langle \tau \rangle$")
-plt.title(r"Média de $\tau$ em função de $\beta$")
-plt.legend()
-plt.grid(True)
+# barras de erro (sem marcador, só as barras)
+plt.errorbar(
+    df_tau_beta["tau_mean"], df_tau_beta["beta_mean"],
+    #xerr=df_tau_beta["tau_std"], yerr=df_tau_beta["beta_std"],
+    fmt="none", ecolor="gray", alpha=0.7, capsize=4
+)
+
+plt.xlabel(r"$\langle \tau \rangle$")
+plt.ylabel(r"$\langle \beta \rangle$")
+plt.title(r"Média de $\beta$ em função de $\tau$")
+
+cbar = plt.colorbar(sc)
+cbar.set_label("$\phi$")
+
+plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig("tau_vs_beta_Nc=Np.pdf", dpi=300)
 plt.show()
