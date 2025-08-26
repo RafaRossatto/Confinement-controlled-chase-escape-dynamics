@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 base = Path.home() / "Dados_Doc" / "resultados_modelos"
 
 # Lista de arquivos
-arquivos = sorted(base.glob("params_por_run_EXPbeta_Nc=Np_s_obs_*.csv"))
+arquivos = sorted(base.glob("params_por_run_EXPbeta_Nc=Np*0.5_s_obs_*.csv"))
 
 dados = []
 L = 128
@@ -63,5 +63,5 @@ cbar.set_label("$\phi$")
 
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig("tau_vs_beta_Nc=Np.pdf", dpi=300)
+plt.savefig("tau_vs_beta_Nc=Np*0.5.pdf", dpi=300)
 plt.show()
