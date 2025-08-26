@@ -498,9 +498,9 @@ def analisar_todos(
 # ============================
 
 if __name__ == "__main__":
-    base = Path.home() / "Dados_Doc"
+    base = Path.home() / "Dados_Doc/Np=free*0.25"
     SCENARIO = "Nc=Np*0.5"    # ex.: "Nc=Np" ou "Nc=Np*0.5"
-    n_obs = 10321 # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
+    n_obs = 14745 # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
 
     _ = analisar_todos(
         base=base,

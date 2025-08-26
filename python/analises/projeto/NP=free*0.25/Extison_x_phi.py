@@ -6,7 +6,7 @@ import re
 
 # === Parâmetros ===
 L = 128
-base_path = Path.home() / "Dados_Doc"
+base_path = Path.home() / "Dados_Doc/Np=free*0.25"
 
 roots = [
     ("Nc=Np",     base_path / "Nc=Np"),

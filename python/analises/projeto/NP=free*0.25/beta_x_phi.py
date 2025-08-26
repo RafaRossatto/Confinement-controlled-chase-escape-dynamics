@@ -4,7 +4,7 @@ import re
 import matplotlib.pyplot as plt
 
 # Caminho base
-base = Path.home() / "Dados_Doc" / "resultados_modelos"
+base = Path.home() / "Dados_Doc" / "Np=free*0.25"/ "resultados_modelos"
 
 # Lista de arquivos
 arquivos = sorted(base.glob("params_por_run_EXPbeta_Nc=Np_s_obs_*.csv"))

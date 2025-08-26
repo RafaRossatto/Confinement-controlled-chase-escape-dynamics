@@ -446,7 +446,7 @@ def analisar_cenario(
 # ============================
 
 if __name__ == "__main__":
-    base = Path.home() / "Dados_Doc"
+    base = Path.home() / "Dados_Doc/Np=free*0.25"
 
     # --- ajuste aqui ---
     SCENARIO = "Nc=Np"        # ex.: "Nc=Np" ou "Nc=Np*0.5"

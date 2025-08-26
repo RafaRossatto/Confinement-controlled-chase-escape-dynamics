@@ -4,12 +4,11 @@ import matplotlib.pyplot as plt
 
 # ---------------------- parâmetros principais ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
-            "obs_8192", "obs_9338", "obs_9502","obs_9666","obs_9830",
-            "obs_9994","obs_10158", "obs_10321","obs_11468", "obs_13107", "obs_14745"]
+            "obs_8192", "obs_9830","obs_11468", "obs_13107", "obs_14745"]
 
 bases = [
-    (r"$N_C = N_P$",      "Nc=Np"),
-    (r"$N_C = 0.5\,N_P$", "Nc=Np*0.5"),
+    (r"$N_C=N_P$",      "Nc=Np"),
+    (r"$N_C=0.5\,N_P$", "Nc=Np*0.5"),
 ]
 
 L = 128
@@ -20,13 +19,13 @@ NUM_RUNS = 100
 def total_presas_por_obs(num_obs: int) -> float:
     """N_P = (área - #obs)/2, isto é, metade dos sítios livres após obstáculos."""
     livres = area - num_obs
-    return livres / 2.0
+    return livres / 4.0
 
 cmap = plt.cm.viridis
 plt.figure(figsize=(10, 6))
 
 for base_idx, (label_tex, base_dirname) in enumerate(bases):
-    base_path = Path.home() / f"Dados_Doc/{base_dirname}"
+    base_path = Path.home() / f"Dados_Doc/Np=free*0.25/{base_dirname}"
 
     xs_n = []      # densidade de obstáculos n = #obs / área
     ys_mean = []   # média normalizada por N_P
@@ -35,12 +34,12 @@ for base_idx, (label_tex, base_dirname) in enumerate(bases):
     for obs_folder in obs_list:
         pasta_obs = base_path / obs_folder
         if not pasta_obs.exists():
-            print(f"⚠ Pasta não encontrada: {pasta_obs}")
+            print(f" Pasta não encontrada: {pasta_obs}")
             continue
 
         subpastas = sorted([p for p in pasta_obs.iterdir() if p.is_dir()])
         if not subpastas:
-            print(f"⚠ Nenhuma subpasta encontrada em {pasta_obs}")
+            print(f" Nenhuma subpasta encontrada em {pasta_obs}")
             continue
         pasta_dentro = subpastas[0]
 
@@ -55,10 +54,10 @@ for base_idx, (label_tex, base_dirname) in enumerate(bases):
                         ultimo = float(conteudo[-1])  # usa o valor final do run
                         valores_finais_runs.append(ultimo)
                     except ValueError:
-                        print(f"⚠ Erro ao converter último valor em {arquivo}")
+                        print(f" Erro ao converter último valor em {arquivo}")
 
         if not valores_finais_runs:
-            print(f"⚠ Sem valores em {pasta_dentro}")
+            print(f" Sem valores em {pasta_dentro}")
             continue
 
         media_bruta = float(np.mean(valores_finais_runs))
@@ -68,13 +67,13 @@ for base_idx, (label_tex, base_dirname) in enumerate(bases):
         try:
             num_obs = int(obs_folder.split("_")[1])
         except Exception:
-            print(f"⚠ Não consegui extrair número de obstáculos de '{obs_folder}'")
+            print(f" Não consegui extrair número de obstáculos de '{obs_folder}'")
             continue
 
         # N_P = (área - #obs) / 2  (mesmo para ambas as bases)
         N_P = total_presas_por_obs(num_obs)
         if N_P <= 0:
-            print(f"⚠ N_P inválido para {obs_folder}")
+            print(f" N_P inválido para {obs_folder}")
             continue
 
         media_norm = media_bruta / N_P
@@ -97,8 +96,8 @@ for base_idx, (label_tex, base_dirname) in enumerate(bases):
 # linha de referência ~ limiar de percolação de sítio em rede quadrada
 plt.axvline(x=0.59, color='black', linestyle='--', linewidth=1.5, label='$n \\approx 0.59$')
 
-plt.xlabel("$\phi$ (densidade de obstáculos)")
-plt.ylabel("Fraç. de presas inacessíveis ($N_{\\text{inacc}}/N_P$)")
+plt.xlabel("$\phi$")
+plt.ylabel("$N_{\\text{inacc}}/N_P$")
 plt.title("$N_C = N_P$  vs  $N_C = 0.5\\,N_P$  ")
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
