@@ -2,9 +2,10 @@ import pandas as pd
 from pathlib import Path
 import re
 import matplotlib.pyplot as plt
+from matplotlib.colors import TwoSlopeNorm
 
 # Caminho base
-base = Path.home() / "Dados_Doc" / "resultados_modelos"
+base = Path.home() / "Dados_Doc" /"Np=free*0.25"/ "resultados_modelos"
 
 # Lista de arquivos
 arquivos = sorted(base.glob("params_por_run_EXPbeta_Nc=Np*0.5_s_obs_*.csv"))
@@ -39,15 +40,31 @@ df_tau_beta = pd.DataFrame(dados).sort_values("beta_mean")
 
 plt.figure(figsize=(10,7), dpi=150)
 
+# Normalização divergente centrada em 0.60
+phi = df_tau_beta["frac_obs"].to_numpy()
+vmin = float(phi.min())
+vmax = float(phi.max())
+
+# Garante que 0.60 esteja dentro do intervalo da cor
+if not (vmin <= 0.60 <= vmax):
+    # expande só o necessário
+    eps = 1e-9
+    vmin = min(vmin, 0.60 - eps)
+    vmax = max(vmax, 0.60 + eps)
+
+norm = TwoSlopeNorm(vmin=vmin, vcenter=0.60, vmax=vmax)
+
+# Escolha uma colormap divergente: 'coolwarm', 'RdBu_r', 'PuOr', 'PRGn', 'BrBG', 'PiYG', 'seismic' etc.
 sc = plt.scatter(
     df_tau_beta["tau_mean"], df_tau_beta["beta_mean"],
-    c=df_tau_beta["frac_obs"],          # cor ~ fração de obstáculos
-    cmap="viridis",                     # colormap
-    s=80,                               # tamanho dos pontos
-    edgecolor="k"                       # borda preta
+    c=df_tau_beta["frac_obs"],
+    cmap="coolwarm",           # <— diverging
+    norm=norm,                 # <— centra a divergência em 0.60
+    s=80,
+    edgecolor="k"
 )
 
-# barras de erro (sem marcador, só as barras)
+# Barras de erro (opcional)
 plt.errorbar(
     df_tau_beta["tau_mean"], df_tau_beta["beta_mean"],
     #xerr=df_tau_beta["tau_std"], yerr=df_tau_beta["beta_std"],
@@ -59,9 +76,16 @@ plt.ylabel(r"$\langle \beta \rangle$")
 plt.title(r"Média de $\beta$ em função de $\tau$")
 
 cbar = plt.colorbar(sc)
-cbar.set_label("$\phi$")
+cbar.set_label(r"$\phi$")
+
+# Destaca visualmente o ponto de divergência na colorbar
+# (linha fina na posição correspondente a 0.60)
+cbar.ax.axhline(norm(0.60), color="k", lw=1)
+# Ticks úteis: mínimos, centro (0.60) e máximos
+cbar.set_ticks([vmin, 0.60, vmax])
+cbar.set_ticklabels([f"{vmin:.2f}", "0.60", f"{vmax:.2f}"])
 
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig("tau_vs_beta_Nc=Np*0.5.pdf", dpi=300)
+plt.savefig("tau_vs_beta_Nc=Np*0.5_diverging_center_0p60.pdf", dpi=300)
 plt.show()

@@ -3,6 +3,13 @@ title: "Meu Diário de Pesquisa-Tese"
 format: html
 ---
 
+## 27/08/2025
+
+- Ajeitei o gráfico das distancia.
+- Estou rodando as condicoes inicias para 0.80 das presas. Depois rodar o programa.
+- Calcular a o fit médio com todas as curvas juntas. Mas precisa fazer o filtro do maior. Ai a gente precisa analisar.
+- Fazer o ajuste com as presas disponiveis, dessa forma o c é sempre igual a zero.
+
 ## 20/08/2025
 
 - A principio estamos com melhores fitts. Precisa fala com os professores, sobre a questao dos pontos que nao sao iguais.

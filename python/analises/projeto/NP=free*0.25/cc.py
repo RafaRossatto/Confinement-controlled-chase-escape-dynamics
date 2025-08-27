@@ -215,11 +215,11 @@ for ax in (ax1, ax2):
     ax.axvline(PHI_CRIT_OBST, color="black", linestyle="--", linewidth=1.2,
                label=r"$\phi_c \approx {:.3f}$".format(PHI_CRIT_OBST))
 
-ax1.set_ylabel(r"Fração da componente gigante $S_1$")
-ax1.set_title("Percolação dos sítios livres: $S_1$ vs $\\phi$")
+ax1.set_ylabel(r"$S_1$")
+ax1.set_title("$S_1$ vs $\\phi$")
 
-ax2.set_ylabel("Número de componentes $N_c$")
-ax2.set_title("Fragmentação do espaço livre: $N_c$ vs $\\phi$")
+ax2.set_ylabel("number of components(N_c)")
+ax2.set_title("$N_c$ vs $\\phi$")
 
 fig1.tight_layout(); fig2.tight_layout()
 fig1.savefig("componentes_gigante_vs_phi.pdf", dpi=200)
