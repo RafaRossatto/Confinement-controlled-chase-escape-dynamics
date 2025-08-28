@@ -10,6 +10,7 @@ obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
 bases = [
     (r"$N_C=N_P$",      "Nc=Np"),
     (r"$N_C=0.5\,N_P$", "Nc=Np*0.5"),
+    (r"$N_C=0.8\,N_P$", "Nc=Np*0.8"),
 ]
 
 L = 128
@@ -233,5 +234,5 @@ plt.title(f"$\\langle d \\rangle$ ({suffix}) vs $\\phi$ — $N_C=N_P$  vs  $N_C=
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
 plt.tight_layout()
-# plt.savefig("mean_distance_vs_phi.pdf", dpi=200)  # se quiser salvar
+plt.savefig("shortest_distance_vs_phi.pdf", dpi=200)  # se quiser salvar
 plt.show()

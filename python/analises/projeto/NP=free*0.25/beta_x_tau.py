@@ -8,7 +8,7 @@ from matplotlib.colors import TwoSlopeNorm
 base = Path.home() / "Dados_Doc" /"Np=free*0.25"/ "resultados_modelos"
 
 # Lista de arquivos
-arquivos = sorted(base.glob("params_por_run_EXPbeta_Nc=Np*0.5_s_obs_*.csv"))
+arquivos = sorted(base.glob("params_por_run_EXPbeta_Nc=Np_s_obs_*.csv"))
 
 dados = []
 L = 128
@@ -73,7 +73,7 @@ plt.errorbar(
 
 plt.xlabel(r"$\langle \tau \rangle$")
 plt.ylabel(r"$\langle \beta \rangle$")
-plt.title(r"Média de $\beta$ em função de $\tau$")
+plt.title(r"Média de $\beta$ em função de $\tau, Nc=Np*0.8$")
 
 cbar = plt.colorbar(sc)
 cbar.set_label(r"$\phi$")
@@ -87,5 +87,5 @@ cbar.set_ticklabels([f"{vmin:.2f}", "0.60", f"{vmax:.2f}"])
 
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig("tau_vs_beta_Nc=Np*0.5_diverging_center_0p60.pdf", dpi=300)
+plt.savefig("tau_vs_beta_Nc=Np.pdf", dpi=300)
 plt.show()

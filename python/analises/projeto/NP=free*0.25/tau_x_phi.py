@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 base = Path.home() / "Dados_Doc" / "Np=free*0.25"/ "resultados_modelos"
 
 # Lista de arquivos
-arquivos = sorted(base.glob("params_por_run_EXPbeta_Nc=Np_s_obs_*.csv"))
+arquivos = sorted(base.glob("params_por_run_EXPbeta_Nc=Np*0.5_s_obs_*.csv"))
 
 dados = []
 L = 128
@@ -36,7 +36,7 @@ plt.figure(figsize=(10,7), dpi=150)  # largura=10 pol, altura=7 pol, dpi=150
 plt.errorbar(
     df_tau["frac_obs"], df_tau["tau_mean"],
     yerr=df_tau["tau_std"],
-    fmt="o-", capsize=5, label="Nc=Np"
+    fmt="o-", capsize=5, label="Nc=Np*0.5"
 )
 
 plt.axvline(x=0.59, color="red", linestyle="--", label=r"$\phi_c = 0.59$")
@@ -47,5 +47,5 @@ plt.title("")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("tau_x_phi_Nc=Np.pdf", dpi=300)  # salva com qualidade alta
+plt.savefig("tau_x_phi_Nc=Np*0.5.pdf", dpi=300)  # salva com qualidade alta
 plt.show()

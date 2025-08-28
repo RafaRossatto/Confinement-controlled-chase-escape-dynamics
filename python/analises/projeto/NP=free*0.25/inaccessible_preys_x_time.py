@@ -9,6 +9,7 @@ obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
 bases = [
     (r"$N_C=N_P$",      "Nc=Np"),
     (r"$N_C=0.5\,N_P$", "Nc=Np*0.5"),
+    (r"$N_C=0.8\,N_P$", "Nc=Np*0.8"),
 ]
 
 L = 128
