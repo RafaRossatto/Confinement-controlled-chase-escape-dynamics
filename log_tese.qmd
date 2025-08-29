@@ -5,6 +5,11 @@ format: html
 
 ## 27/08/2025
 
+- A principio tem bastante resultdos. Agora precisa ver o que vamos falar na RAFA.
+- Passar para o overleaf o restultados, tentar explicar, e avisar o Bordin, para ver se ele tem algo a mais para procurar.
+
+## 27/08/2025
+
 - Ajeitei o gráfico das distancia.
 - Estou rodando as condicoes inicias para 0.80 das presas. Depois rodar o programa.
 - Calcular a o fit médio com todas as curvas juntas. Mas precisa fazer o filtro do maior. Ai a gente precisa analisar.
