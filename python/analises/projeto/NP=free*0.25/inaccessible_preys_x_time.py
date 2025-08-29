@@ -7,9 +7,9 @@ obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
             "obs_8192", "obs_9830","obs_11468", "obs_13107", "obs_14745"]
 
 bases = [
-    (r"$N_C=N_P$",      "Nc=Np"),
-    (r"$N_C=0.5\,N_P$", "Nc=Np*0.5"),
-    (r"$N_C=0.8\,N_P$", "Nc=Np*0.8"),
+    (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
+    (r"$N^{C}_{0}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
+    (r"$N^{C}_{0}=N^{E}_{0}$",      "Nc=Np"),
 ]
 
 L = 128
@@ -22,7 +22,7 @@ def total_presas_por_obs(num_obs: int) -> float:
     livres = area - num_obs
     return livres / 4.0
 
-cmap = plt.cm.viridis
+cmap = plt.get_cmap("flag")
 plt.figure(figsize=(10, 6))
 
 for base_idx, (label_tex, base_dirname) in enumerate(bases):
@@ -91,17 +91,17 @@ for base_idx, (label_tex, base_dirname) in enumerate(bases):
 
         plt.errorbar(xs_n, ys_mean, yerr=ys_std,
                      fmt='o-', capsize=5, markersize=5,
-                     color=cmap(base_idx / max(1, len(bases) - 1)),
+                     color=cmap(base_idx),
                      label=label_tex)
 
 # linha de referência ~ limiar de percolação de sítio em rede quadrada
-plt.axvline(x=0.59, color='black', linestyle='--', linewidth=1.5, label='$n \\approx 0.59$')
+plt.axvline(x=0.59, color='black', linestyle='--', linewidth=1.5, label='$\phi_{c} \\approx 0.59$')
 
 plt.xlabel("$\phi$")
-plt.ylabel("$N_{\\text{inacc}}/N_P$")
-plt.title("$N_C = N_P$  vs  $N_C = 0.5\\,N_P$  ")
+plt.ylabel("$N^{E}_{\\text{inacc}}/N^{E}_{0}$")
+#plt.title("$N_C = N_E$  vs  $N_C = 0.5\\,N_E$  ")
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
 plt.tight_layout()
-plt.savefig('inaccessible_preys_normalized_by_half_free.pdf')
+plt.savefig('inaccessible_preys.pdf')
 plt.show()

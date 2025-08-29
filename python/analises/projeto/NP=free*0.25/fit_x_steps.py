@@ -380,7 +380,7 @@ def analisar_todos(
     z_fit_ep = np.maximum(x_fit - t0_ep_med, 0.0)
     y_fit_ep = exp_power(z_fit_ep, A_ep_med, tau_ep_med, beta_ep_med, C_ep_med)
     lbl = (
-        f"Exp^β: A={A_ep_med:.2g}, τ={tau_ep_med:.2g}, "
+        f"Exp^β_one: A={A_ep_med:.2g}, τ={tau_ep_med:.2g}, "
         f"β={beta_ep_med:.2g}, C={C_ep_med:.2g}"
     )
     plt.plot(x_fit, y_fit_ep, '--', label=lbl)
@@ -390,7 +390,7 @@ def analisar_todos(
         A_m, tau_m, beta_m, C_m, t0_m = params_mean
         z_fit_m = np.maximum(x_fit - t0_m, 0.0)
         y_fit_m = exp_power(z_fit_m, A_m, tau_m, beta_m, C_m)
-        plt.plot(x_fit, y_fit_m, '-', label=f"Fit na média: τ={tau_m:.2g}, β={beta_m:.2g}, C={C_m:.2g}")
+        plt.plot(x_fit, y_fit_m, '-', label=f"Exp^β_all: τ={tau_m:.2g}, β={beta_m:.2g}, C={C_m:.2g}")
 
     # Overlay opcional: curvas finas por run
     if overlay_runs:
@@ -460,7 +460,7 @@ def analisar_todos(
 if __name__ == "__main__":
     base = Path.home() / "Dados_Doc/Np=free*0.25"
     SCENARIO = "Nc=Np*0.8"    # ex.: "Nc=Np" ou "Nc=Np*0.5"
-    n_obs = 8192  # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
+    n_obs = 14745 # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
 
     _ = analisar_todos(
         base=base,

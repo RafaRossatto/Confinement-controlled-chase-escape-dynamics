@@ -22,6 +22,10 @@ BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
 # limiar de sítios livres na rede quadrada: p_c ≈ 0.592746
 PC_SITE_SQUARE = 0.592746
 PHI_CRIT_OBST = 1.0 - PC_SITE_SQUARE  # ~0.407254
+PHI_CRIT_OBST = 0.592746
+
+# Paleta discreta p/ 3 cenários (cores bem distintas)
+cmap = plt.get_cmap("flag")
 # --------------------------------------------------------
 
 def ler_coords_txt(fp: Path):
@@ -189,14 +193,14 @@ for base_idx, (label_tex, base_dirname) in enumerate(bases):
         xs_phi, mean_giant_frac, std_giant_frac = zip(*sorted(zip(xs_phi, mean_giant_frac, std_giant_frac)))
         ax1.errorbar(xs_phi, mean_giant_frac, yerr=std_giant_frac,
                      fmt='o-', capsize=5, markersize=5,
-                     color=cmap(base_idx / max(1, len(bases)-1)),
+                     color=cmap(base_idx),   # em plt.errorbar(...),
                      label=label_tex)
 
     if mean_n_comp:
         xs_phi_n, mean_n_comp, std_n_comp = zip(*sorted(zip(xs_phi_n, mean_n_comp, std_n_comp)))
         ax2.errorbar(xs_phi_n, mean_n_comp, yerr=std_n_comp,
                      fmt='o-', capsize=5, markersize=5,
-                     color=cmap(base_idx / max(1, len(bases)-1)),
+                     color=cmap(base_idx),   # em plt.errorbar(...),
                      label=label_tex)
 
     # salvar CSV do cenário
@@ -212,7 +216,7 @@ for base_idx, (label_tex, base_dirname) in enumerate(bases):
 for ax in (ax1, ax2):
     ax.grid(True, linestyle="--", alpha=0.6)
     ax.legend()
-    ax.set_xlabel(r"$\phi$ (densidade de obstáculos)")
+    ax.set_xlabel(r"$\phi$")
     ax.axvline(PHI_CRIT_OBST, color="black", linestyle="--", linewidth=1.2,
                label=r"$\phi_c \approx {:.3f}$".format(PHI_CRIT_OBST))
 
