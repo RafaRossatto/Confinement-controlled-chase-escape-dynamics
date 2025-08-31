@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import List, Tuple, Optional
 from scipy.optimize import curve_fit
+import re
 
 # ============================
 # Modelo
@@ -18,12 +19,10 @@ def exp_offset(z: np.ndarray, A: float, tau: float, C: float) -> np.ndarray:
     """y = A * exp(-z / tau) + C"""
     return A * np.exp(-z / tau) + C
 
-
 def exp_power(z: np.ndarray, A: float, tau: float, beta: float, C: float) -> np.ndarray:
     """y = A * exp(-(z / tau)**beta) + C  (KWW / stretched exponential)"""
     zc = np.maximum(z, 0.0)  # z >= 0 por construção (clamp)
     return A * np.exp(- (zc / tau)**beta ) + C
-
 
 # ============================
 # Utilidades de ajuste e métricas
@@ -45,7 +44,6 @@ def fit_expbeta(
       - C é fixo (último valor do CSV se não fornecido)
       - Se fix_A=True: A = N0 - C (clamp >= 1e-9)
       - max_step_fit: se definido, IGNORA pontos com passo > max_step_fit ao fazer o *fit*.
-        (Útil para cortar caudas muito longas/ruidosas.)
 
     Retorna (params_tuple=(A,tau,beta,C), t0, C).
     """
@@ -79,10 +77,9 @@ def fit_expbeta(
 
     z = x - t0
     L = float(np.ptp(z)) if np.ptp(z) > 0 else 1.0
-    tau_max = max(1e-6, tau_factor * L)
+    _ = max(1e-6, tau_factor * L)  # bounds tratam implicitamente
 
-    # ramos NORMAIS (com retorno)
-    # — reescala z para [0,1] para melhorar condicionamento
+    # reescala z para [0,1] para melhorar condicionamento
     z_s = np.maximum(z / L, 0.0)
     tau0_s = 0.5
     beta0 = 1.0
@@ -122,7 +119,6 @@ def fit_expbeta(
         tau = tau_s * L
         return (A, tau, beta, C), t0, C
 
-
 def predict_full_on_csv_expbeta(
     path: Path, params, t0: float
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -135,7 +131,6 @@ def predict_full_on_csv_expbeta(
     A, tau, beta, C = params
     y_pred = exp_power(z_full, A, tau, beta, C)
     return t_full, y_true, y_pred
-
 
 def metrics(y_true: np.ndarray, y_pred: np.ndarray, k_params: int):
     """
@@ -158,7 +153,6 @@ def metrics(y_true: np.ndarray, y_pred: np.ndarray, k_params: int):
         bic = float(n * np.log(rss / n) + k_params * np.log(n))
     return rss, r2, aic, bic
 
-
 # ============================
 # I/O
 # ============================
@@ -167,7 +161,6 @@ def collect_runs(scen_dir: Path) -> List[Path]:
     return sorted(
         [p for p in scen_dir.rglob("*_run_*_presas_por_passo.csv") if p.is_file()]
     )
-
 
 # ============================
 # Pipeline
@@ -184,7 +177,9 @@ def analisar_todos(
     fix_A: bool = True,
     salvar_series_ajuste: bool = True,
     max_step_fit: Optional[float] = None,
-    comparar_fit_media: bool = True,
+    mostrar_fit_media: bool = True,   # << controla a 2ª curva (fit direto na média)
+    label_latex: bool = True,
+    incluir_A_na_legenda: bool = False,
 ):
     """
     Ajusta APENAS o modelo exponencial esticado (KWW) em todos os runs.
@@ -192,7 +187,9 @@ def analisar_todos(
     - max_step_fit: se definido, corta pontos com passo > max_step_fit **somente** para o *fit*.
       (As previsões e as médias/±1σ continuam sendo computadas em todos os passos disponíveis.)
 
-    Agrega estatísticas (medianas) e plota média±1σ + curva mediana.
+    Plota média±1σ + curva mediana (parâmetros mediana dos runs).
+    Opcionalmente:
+      • plota o ajuste direto na média (mostrar_fit_media=True)
     Também salva, por run, os pontos previstos para facilitar plots.
     """
     if out_dir is None:
@@ -311,11 +308,13 @@ def analisar_todos(
     beta_ep_med = float(np.nanmedian(df_ep["beta"]))
     C_ep_med = float(np.nanmedian(df_ep["C"]))
     t0_ep_med = float(np.nanmedian(df_ep["t0"]))
+
     # --- Ajuste direto na média (opcional) ---
     params_mean = None
     r2_med_vs_mean = aic_med_vs_mean = bic_med_vs_mean = np.nan
     r2_mean_vs_mean = aic_mean_vs_mean = bic_mean_vs_mean = np.nan
-    if comparar_fit_media:
+
+    if mostrar_fit_media:
         m_fit_mean = x_vals <= (max_step_fit if max_step_fit is not None else x_vals.max())
         x_mean_fit = x_vals[m_fit_mean]
         y_mean_fit = y_mean.values[m_fit_mean]
@@ -353,16 +352,40 @@ def analisar_todos(
                     A_m, tau_s, beta = A0, tau0_s, beta0
                 tau_m = tau_s * Lm
                 params_mean = (A_m, tau_m, beta, C_m, t0_m)
+
     # métricas vs média para a curva mediana
     y_fit_med_on_x = exp_power(np.maximum(x_vals - t0_ep_med, 0.0), A_ep_med, tau_ep_med, beta_ep_med, C_ep_med)
     rss_med, r2_med_vs_mean, aic_med_vs_mean, bic_med_vs_mean = metrics(y_mean.values, y_fit_med_on_x, k_params=(2 if fix_A else 3))
-    if params_mean is not None:
+
+    if mostrar_fit_media and params_mean is not None:
         A_m, tau_m, beta_m, C_m, t0_m = params_mean
         y_fit_mean_on_x = exp_power(np.maximum(x_vals - t0_m, 0.0), A_m, tau_m, beta_m, C_m)
         rss_mean, r2_mean_vs_mean, aic_mean_vs_mean, bic_mean_vs_mean = metrics(y_mean.values, y_fit_mean_on_x, k_params=(2 if fix_A else 3))
 
     # -------- Plot --------
     plt.figure(figsize=(9, 6))
+
+    # --- Rótulo dos dados conforme SCENARIO ---
+    # Se SCENARIO="Nc=Np*0.5" → f=0.5 → label "N^C_{0}=0.5 N^E_{0}"
+    # Se SCENARIO="Nc=Np"     → f=1   → label "⟨N^E⟩ ± σ"
+    try:
+        txt = (SCENARIO or "").replace(" ", "")
+        m = re.search(r"Nc\s*=\s*Np(?:\*([0-9]*\.?[0-9]+))?$", txt, flags=re.IGNORECASE)
+        f_nc = 1.0 if (m and m.group(1) is None) else (float(m.group(1)) if m else None)
+    except Exception:
+        f_nc = None
+
+    if label_latex:
+        if (f_nc is not None) and (abs(f_nc - 1.0) > 1e-12):
+            dados_label = rf"$N^C_{{0}}={f_nc:g}\,N^E_{{0}}$"
+        else:
+            dados_label = r"$ N^C_{0} = N^E_{0}$"
+    else:
+        if (f_nc is not None) and (abs(f_nc - 1.0) > 1e-12):
+            dados_label = f"N^C_0={f_nc:g}·N^E_0"
+        else:
+            dados_label = "Dados médios ±1σ"
+
     plt.errorbar(
         x_vals,
         y_mean.values,
@@ -371,7 +394,7 @@ def analisar_todos(
         capsize=3,
         markersize=3,
         alpha=0.8,
-        label="Dados médios ±1σ",
+        label=dados_label,
     )
 
     x_fit = np.linspace(float(x_vals.min()), float(x_vals.max()), 600)
@@ -379,18 +402,22 @@ def analisar_todos(
     # Exp^beta mediano
     z_fit_ep = np.maximum(x_fit - t0_ep_med, 0.0)
     y_fit_ep = exp_power(z_fit_ep, A_ep_med, tau_ep_med, beta_ep_med, C_ep_med)
-    lbl = (
-        f"Exp^β_one: A={A_ep_med:.2g}, τ={tau_ep_med:.2g}, "
-        f"β={beta_ep_med:.2g}, C={C_ep_med:.2g}"
-    )
-    plt.plot(x_fit, y_fit_ep, '--', label=lbl)
+    if incluir_A_na_legenda:
+        lbl_med = rf"$\mathrm{{Exp}}^{{\beta}}_{{med}}:~A={A_ep_med:.3g},~\tau={tau_ep_med:.3g},~\beta={beta_ep_med:.3g},~C={C_ep_med:.3g}$"
+    else:
+        lbl_med = rf"$\mathrm{{Exp}}^{{\beta}}_{{med}}:~\tau={tau_ep_med:.3g},~\beta={beta_ep_med:.3g},~C={C_ep_med:.3g}$"
+    plt.plot(x_fit, y_fit_ep, '--', label=lbl_med)
 
-    # Fit na média (curva adicional)
-    if comparar_fit_media and params_mean is not None:
+    # 2ª curva: Fit direto na média (opcional)
+    if mostrar_fit_media and params_mean is not None:
         A_m, tau_m, beta_m, C_m, t0_m = params_mean
         z_fit_m = np.maximum(x_fit - t0_m, 0.0)
         y_fit_m = exp_power(z_fit_m, A_m, tau_m, beta_m, C_m)
-        plt.plot(x_fit, y_fit_m, '-', label=f"Exp^β_all: τ={tau_m:.2g}, β={beta_m:.2g}, C={C_m:.2g}")
+        if incluir_A_na_legenda:
+            lbl_mean = rf"$\mathrm{{Exp}}^{{\beta}}_{{mean}}:~A={A_m:.3g},~\tau={tau_m:.3g},~\beta={beta_m:.3g},~C={C_m:.3g}$"
+        else:
+            lbl_mean = rf"$\mathrm{{Exp}}^{{\beta}}_{{mean}}:~\tau={tau_m:.3g},~\beta={beta_m:.3g},~C={C_m:.3g}$"
+        plt.plot(x_fit, y_fit_m, '-', label=lbl_mean)
 
     # Overlay opcional: curvas finas por run
     if overlay_runs:
@@ -400,8 +427,8 @@ def analisar_todos(
             plt.plot(x_fit, yi, lw=0.6, alpha=0.2)
 
     plt.xlabel("steps")
-    plt.ylabel("preys alives")
-    plt.title(f"{SCENARIO} • s_obs_{n_obs if n_obs != 0 else '00'}")
+    plt.ylabel(r"$N^E$" if label_latex else "N^E")
+    # plt.title(f"{SCENARIO} • s_obs_{n_obs if n_obs != 0 else '00'}")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
@@ -426,17 +453,16 @@ def analisar_todos(
     print("=== RESUMO (medianas) — EXP^β ===")
     print(f"R2={med(df_ep,'R2'):.4f}, AIC={med(df_ep,'AIC'):.2f}, BIC={med(df_ep,'BIC'):.2f}")
 
-    # Comparação com fit direto na média
     print("=== COMPARAÇÃO exp^β (mediana por run vs fit direto na média) ===")
     print(f"Mediana: τ={tau_ep_med:.4g}, β={beta_ep_med:.4g}, C={C_ep_med:.4g} | R2_vs_média={r2_med_vs_mean:.4f}, AIC_vs_média={aic_med_vs_mean:.2f}")
-    if comparar_fit_media and params_mean is not None:
+    if mostrar_fit_media and params_mean is not None:
         print(f"Média  : τ={tau_m:.4g}, β={beta_m:.4g}, C={C_m:.4g} | R2_vs_média={r2_mean_vs_mean:.4f}, AIC_vs_média={aic_mean_vs_mean:.2f}")
         if (tau_m > 0) and (beta_m > 0):
             d_tau = (tau_ep_med - tau_m) / tau_m
             d_beta = (beta_ep_med - beta_m) / beta_m
             print(f"Δrel τ={d_tau:.2%}, Δrel β={d_beta:.2%}")
 
-    return {
+    retorno = {
         "df_exp_power": df_ep,
         "x_mean": x_vals,
         "y_mean": y_mean.values,
@@ -451,7 +477,9 @@ def analisar_todos(
             }
         },
     }
-
+    if mostrar_fit_media and params_mean is not None:
+        retorno["params_fit_mean"] = {"A": A_m, "tau": tau_m, "beta": beta_m, "C": C_m, "t0": t0_m}
+    return retorno
 
 # ============================
 # Execução
@@ -459,7 +487,7 @@ def analisar_todos(
 
 if __name__ == "__main__":
     base = Path.home() / "Dados_Doc/Np=free*0.25"
-    SCENARIO = "Nc=Np*0.8"    # ex.: "Nc=Np" ou "Nc=Np*0.5"
+    SCENARIO = "Nc=Np"    # ex.: "Nc=Np" ou "Nc=Np*0.5"
     n_obs = 14745 # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
 
     _ = analisar_todos(
@@ -472,5 +500,8 @@ if __name__ == "__main__":
         overlay_runs=False,
         fix_A=True,                # usa A = N0 - C
         salvar_series_ajuste=True,
-        max_step_fit=1500,         # << CORTE no *fit*: ignora passos > 1000
+        max_step_fit=1500,         # corte no *fit*
+        mostrar_fit_media=False,    # << liga/desliga a 2ª curva (fit na média)
+        label_latex=True,          # rótulos em LaTeX
+        incluir_A_na_legenda=True,
     )
