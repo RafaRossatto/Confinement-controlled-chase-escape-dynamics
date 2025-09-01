@@ -3,6 +3,11 @@ title: "Meu Diário de Pesquisa-Tese"
 format: html
 ---
 
+## 01/09/2025
+
+- Estou tentando fazer um bloxplot. É interessante fazer um inset dos outsiders. Ai Acredito que vai ficar bom.
+
+
 ## 27/08/2025
 
 - A principio tem bastante resultdos. Agora precisa ver o que vamos falar na RAFA.

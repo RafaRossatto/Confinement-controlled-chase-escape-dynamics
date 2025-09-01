@@ -488,7 +488,7 @@ def analisar_todos(
 if __name__ == "__main__":
     base = Path.home() / "Dados_Doc/Np=free*0.25"
     SCENARIO = "Nc=Np"    # ex.: "Nc=Np" ou "Nc=Np*0.5"
-    n_obs = 14745 # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
+    n_obs = 8192 # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
 
     _ = analisar_todos(
         base=base,
@@ -501,7 +501,7 @@ if __name__ == "__main__":
         fix_A=True,                # usa A = N0 - C
         salvar_series_ajuste=True,
         max_step_fit=1500,         # corte no *fit*
-        mostrar_fit_media=False,    # << liga/desliga a 2ª curva (fit na média)
+        mostrar_fit_media=True,    # << liga/desliga a 2ª curva (fit na média)
         label_latex=True,          # rótulos em LaTeX
         incluir_A_na_legenda=True,
     )

@@ -2,185 +2,298 @@
 # -*- coding: utf-8 -*-
 
 from pathlib import Path
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import re
+import networkx as nx
 import csv
-from matplotlib.ticker import PercentFormatter
+import re
+from typing import List, Tuple, Dict, Optional
+from networkx.algorithms.shortest_paths.weighted import multi_source_dijkstra_path_length
 
-# ---------------------- Parâmetros principais ----------------------
-L = 128
-AREA = L**2
-BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+# ---------------------- parâmetros (iguais aos seus) ----------------------
+obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
+            "obs_8192", "obs_9830", "obs_11468", "obs_13107", "obs_14745"]
 
 bases = [
-    (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
-    (r"$N^{C}_{0}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
-    (r"$N^{C}_{0}=N^{E}_{0}$",      "Nc=Np"),
+    (r"$N_C=0.5\,N_P$", "Nc=Np*0.5"),
+    (r"$N_C=0.8\,N_P$", "Nc=Np*0.8"),
+    (r"$N_C=N_P$",      "Nc=Np"),
 ]
 
-# saída
-OUT_DIR = BASE_ROOT / "resultados_modelos" / "zeros_escapers"
+L = 128
+area = L**2
+NUM_RUNS = 100
+BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+
+# Percolação (linha de referência)
+PHI_LINE = 0.592746
+
+# Saídas
+OUT_DIR = BASE_ROOT / "resultados_modelos" / "dist_min"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# plot
-PHI_LINE = 0.59
-CMAP_NAME = "flag"
+# Plotar ao final?
+FAZER_PLOT = True
 
-# normalização do eixo-Y (fração de zeros)
-# "por_cenario" -> cada curva/ cenário é dividida pelo seu máximo
-# "global"      -> divide por max entre todos os pontos de todos os cenários
-# "nenhuma"     -> plota a fração original em [0,1]
-Y_NORMALIZACAO = "por_cenario"
+# Usar Condição Periódica de Contorno?
+USE_PBC = True
 
-# ---------------------- Utilitários ----------------------
-def ler_dat(fp: Path) -> pd.DataFrame:
-    """ Lê .dat tolerante a delimitadores e cabeçalhos. """
-    try:
-        df = pd.read_csv(fp, sep=None, engine="python", comment="#")
-        ok = {"run", "steps", "escapers", "seed"}.issubset(df.columns)
-        if not ok:
-            raise ValueError("Cabeçalho inesperado")
-    except Exception:
-        df = pd.read_csv(
-            fp, delim_whitespace=True, header=None,
-            names=["run","steps","escapers","seed"], comment="#"
-        )
-    df["steps"] = pd.to_numeric(df["steps"], errors="coerce")
-    df["escapers"] = pd.to_numeric(df["escapers"], errors="coerce")
-    return df.dropna(subset=["steps","escapers"])
+# Candidatos de nomes dentro de cada run para chasers/escapers
+CHASER_CANDIDATES = ["chasers.txt", "cacs.txt", "ch.txt", "chaser.txt"]
+ESCAPER_CANDIDATES = ["escapers.txt", "presas.txt", "es.txt", "escaper.txt"]
 
-def extrai(padrao: str, texto: str, default=None, cast=int):
-    m = re.search(padrao, texto)
-    return cast(m.group(1)) if m else default
-
-def coletar(base_root: Path, label_tex: str) -> pd.DataFrame:
-    """ Percorre s_obs_*; calcula fração de linhas com escapers==0. """
-    linhas = []
-    if not base_root.exists():
-        print(f"[WARN] Raiz não encontrada: {base_root}")
-        return pd.DataFrame()
-
-    subdirs = [d for d in base_root.iterdir() if d.is_dir() and d.name.startswith("s_obs_")]
-    if not subdirs:
-        print(f"[WARN] Sem subpastas s_obs_* em {base_root}")
-        return pd.DataFrame()
-
-    for sdir in sorted(subdirs):
-        # arquivo preferido; fallback p/ qualquer .dat
-        cand = list(sdir.glob("NC_*_NE_*_O_*_TCC_*_SR_*_TCT_*_SR_*.dat"))
-        if not cand:
-            cand = list(sdir.glob("*.dat"))
-        if not cand:
-            print(f"[WARN] Sem .dat em {sdir}")
+# ---------------------- utilitários ----------------------
+def ler_coords_txt(fp: Path) -> List[Tuple[int, int]]:
+    """Lê coordenadas (x y) de um txt; ignora comentários/linhas vazias."""
+    pts = []
+    if not fp.exists():
+        return pts
+    for line in fp.read_text(encoding="utf-8", errors="ignore").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
             continue
-        fp = sorted(cand)[0]
+        s = re.sub(r"[;,]", " ", s)
+        parts = s.split()
+        if len(parts) >= 2:
+            try:
+                x = int(float(parts[0])); y = int(float(parts[1]))
+                pts.append((x, y))
+            except ValueError:
+                pass
+    return pts
 
-        try:
-            df = ler_dat(fp)
-        except Exception as e:
-            print(f"[WARN] Falha lendo {fp.name}: {e}")
-            continue
+def in_bounds(p, L):
+    x, y = p
+    return (0 <= x < L) and (0 <= y < L)
 
-        n_runs = len(df)
-        if n_runs == 0:
-            continue
+def densidade_obs(num_obs: int) -> float:
+    return num_obs / area
 
-        zeros_count = int((df["escapers"] == 0).sum())
-        zeros_frac = zeros_count / float(n_runs)
+def extrai_num_obs(nome_obs: str) -> int:
+    # "obs_1638" -> 1638
+    return int(nome_obs.split("_")[1])
 
-        # tenta O no nome do arquivo; senão, pega da pasta s_obs_XXXX
-        O = extrai(r"_O_(\d+)_", fp.name, default=extrai(r"s_obs_(\d+)$", sdir.name, default=None))
-        if O is None:
-            print(f"[WARN] Não consegui obter O em {fp.name}; pulando…")
-            continue
+def grafo_livre(L: int, obst_set: set, pbc: bool) -> nx.Graph:
+    """
+    Grafo 2D LxL (4-vizinhos) apenas com nós livres (obstáculos removidos).
+    Se pbc=True, as fronteiras enrolam (CPD).
+    """
+    G = nx.Graph()
+    # nós livres
+    for x in range(L):
+        for y in range(L):
+            if (x, y) not in obst_set:
+                G.add_node((x, y))
 
-        linhas.append({
-            "cenario_label": label_tex,
-            "cenario_tag": base_root.name,  # ex.: Nc=Np*0.5
-            "pasta": sdir.name,             # ex.: s_obs_1638
-            "arquivo": str(fp),
-            "O": int(O),
-            "phi": O / float(AREA),
-            "n_runs": n_runs,
-            "zeros_count": zeros_count,
-            "zeros_frac": zeros_frac,  # [0,1]
-        })
+    def vizinhos(x, y):
+        if pbc:
+            return [((x-1) % L, y), ((x+1) % L, y), (x, (y-1) % L), (x, (y+1) % L)]
+        else:
+            cand = []
+            if x > 0:      cand.append((x-1, y))
+            if x < L-1:    cand.append((x+1, y))
+            if y > 0:      cand.append((x, y-1))
+            if y < L-1:    cand.append((x, y+1))
+            return cand
 
-    if not linhas:
-        return pd.DataFrame()
-    return pd.DataFrame(linhas).sort_values("phi").reset_index(drop=True)
+    # arestas entre nós livres
+    for (x, y) in list(G.nodes):
+        for u in vizinhos(x, y):
+            if u in G:
+                G.add_edge((x, y), u)
 
-# ---------------------- Coleta + CSV ----------------------
-tabelas = []
-for label_tex, base_dirname in bases:
-    root_path = BASE_ROOT / base_dirname
-    df_one = coletar(root_path, label_tex)
-    if df_one.empty:
-        continue
-    tabelas.append(df_one)
-    # CSV por cenário (ordenado)
-    df_one.sort_values("phi").to_csv(OUT_DIR / f"zeros_escapers_{base_dirname}.csv", index=False)
-    print(f"[OK] CSV por cenário: {OUT_DIR / f'zeros_escapers_{base_dirname}.csv'}")
+    return G
 
-if not tabelas:
-    raise SystemExit("[!] Nada encontrado em nenhuma raiz.")
+def achar_primeiro_existente(dirpath: Path, candidates: List[str]) -> Optional[Path]:
+    """Retorna o primeiro arquivo existente em dirpath dentre os nomes candidatos."""
+    for name in candidates:
+        fp = dirpath / name
+        if fp.exists():
+            return fp
+    return None
 
-df = pd.concat(tabelas, ignore_index=True)
-# CSV combinado
-out_all = OUT_DIR / "zeros_escapers__ALL.csv"
-df.sort_values(["cenario_tag","phi"]).to_csv(out_all, index=False)
-print(f"[OK] CSV combinado: {out_all}")
+def multi_source_bfs_distmap(G: nx.Graph, sources: List[Tuple[int, int]]) -> Dict[Tuple[int, int], int]:
+    """
+    Distâncias mínimas (em passos) até o chaser mais próximo,
+    usando APENAS NetworkX 3.5 (Dijkstra multi-fonte sem pesos = BFS).
+    """
+    sources = [s for s in sources if s in G]
+    if not sources:
+        return {}
+    # weight=None => cada aresta custa 1; resultado é em número de passos
+    return dict(multi_source_dijkstra_path_length(G, sources, weight=None))
 
-# ---------------------- Normalização (opcional) ----------------------
-df_plot = df.copy()
-if Y_NORMALIZACAO == "por_cenario":
-    df_plot["zeros_norm"] = (
-        df_plot.groupby("cenario_label")["zeros_frac"]
-        .transform(lambda s: (s / s.max()) if s.max() > 0 else s)
-    )
-elif Y_NORMALIZACAO == "global":
-    gmax = df_plot["zeros_frac"].max()
-    df_plot["zeros_norm"] = df_plot["zeros_frac"] / gmax if gmax > 0 else df_plot["zeros_frac"]
-else:
-    df_plot["zeros_norm"] = df_plot["zeros_frac"]
+# ---------------------- pipeline ----------------------
+def processar_cenario(label_tex: str, base_dirname: str):
+    base_path = BASE_ROOT / base_dirname
 
-# ---------------------- Plot ----------------------
-plt.figure(figsize=(10, 6), dpi=150)
-ax = plt.gca()
+    # agregação por-phi (para CSV agregado)
+    agg_phi: Dict[float, Dict[str, List[float]]] = {}
 
-labels = list(df_plot["cenario_label"].unique())
-# usa API nova para o colormap e amostra N cores distintas
-# API nova (sem warning de depreciação)
-cmap = plt.colormaps.get_cmap("flag")
-colors = cmap(np.linspace(0, 1, len(labels), endpoint=False))
+    # CSV por-run (uma linha por run)
+    out_por_run = OUT_DIR / f"dist_min_por_run_{base_dirname}.csv"
+    with open(out_por_run, "w", newline="") as fout:
+        w = csv.writer(fout)
+        header = ["cenario_label", "cenario_tag", "obs_folder", "phi", "run",
+                  "n_escapers", "n_reach", "frac_unreach",
+                  "dist_mean", "dist_min", "dist_max"]
+        w.writerow(header)
 
-for color, lab in zip(colors, labels):
-    dfl = df_plot[df_plot["cenario_label"] == lab].sort_values("phi")
-    ax.plot(dfl["phi"], dfl["zeros_norm"], "o-", label=lab,
-            linewidth=1.6, markersize=5, color=color)
+        for obs_folder in obs_list:
+            pasta_obs = base_path / obs_folder
+            if not pasta_obs.exists():
+                print(f"[WARN] Pasta não encontrada: {pasta_obs}")
+                continue
 
-# linha de referência em φ = 0.59
-ax.axvline(PHI_LINE, color="black", linestyle="--", linewidth=1.5,
-           label=r"$\phi_{c}\approx 0.59$")
+            # pega a 1ª subpasta (ex.: 'nC_XXX' ou similar)
+            subpastas = sorted([p for p in pasta_obs.iterdir() if p.is_dir()])
+            if not subpastas:
+                print(f"[WARN] Nenhuma subpasta em {pasta_obs}")
+                continue
+            pasta_nC = subpastas[0]
 
-ax.set_xlabel(r"$\phi$")
-ylabel = "Escapers = 0 (normalizado a 1)" if Y_NORMALIZACAO != "nenhuma" else "Escapers = 0 (fração)"
-ax.set_ylabel(ylabel)
+            # φ calculado pelo número de obstáculos no nome da pasta
+            phi = densidade_obs(extrai_num_obs(obs_folder))
 
-# se quiser o eixo em %, descomente:
-# ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+            # loop nos runs
+            for i in range(NUM_RUNS):
+                pasta_run = pasta_nC / f"run_{i:02d}"
+                if not pasta_run.exists():
+                    alt = pasta_nC / f"run_{i}"
+                    if alt.exists():
+                        pasta_run = alt
+                    else:
+                        continue
 
-ax.set_ylim(0, 1.05)
-ax.grid(True, linestyle="--", alpha=0.6)
-ax.legend(frameon=False)
-plt.tight_layout()
+                # arquivos dentro do run
+                obst_fp = pasta_run / "obstacules.txt"  # nome usado nos seus scripts
+                ch_fp = achar_primeiro_existente(pasta_run, CHASER_CANDIDATES)
+                es_fp = achar_primeiro_existente(pasta_run, ESCAPER_CANDIDATES)
 
-fig_png = OUT_DIR / "zeros_escapers_vs_phi.png"
-fig_pdf = OUT_DIR / "zeros_escapers_vs_phi.pdf"
-plt.savefig(fig_png, bbox_inches="tight")
-plt.savefig(fig_pdf, bbox_inches="tight")
-plt.show()
+                if ch_fp is None or es_fp is None:
+                    # sem caçadores ou sem presas → pula
+                    continue
 
-print(f"[OK] Figuras salvas:\n - {fig_png}\n - {fig_pdf}")
+                obstacles = set([p for p in ler_coords_txt(obst_fp) if in_bounds(p, L)])
+                chasers   = [p for p in ler_coords_txt(ch_fp) if in_bounds(p, L)]
+                escapers  = [p for p in ler_coords_txt(es_fp) if in_bounds(p, L)]
+
+                if len(escapers) == 0:
+                    continue
+
+                # monta grafo e calcula distâncias (biblioteca)
+                G = grafo_livre(L=L, obst_set=obstacles, pbc=USE_PBC)
+                distmap = multi_source_bfs_distmap(G, chasers)
+
+                dists = []
+                unreachable = 0
+                for e in escapers:
+                    if e not in G:
+                        unreachable += 1
+                        continue
+                    d = distmap.get(e, np.inf)
+                    if np.isinf(d):
+                        unreachable += 1
+                    else:
+                        dists.append(float(d))
+
+                nE = len(escapers)
+                n_reach = len(dists)
+                frac_unreach = (unreachable / nE) if nE > 0 else np.nan
+
+                dist_mean = float(np.mean(dists)) if dists else np.nan
+                dist_min  = float(np.min(dists))  if dists else np.nan
+                dist_max  = float(np.max(dists))  if dists else np.nan
+
+                # escreve CSV por-run
+                w.writerow([label_tex, base_dirname, obs_folder, phi, i,
+                            nE, n_reach, frac_unreach,
+                            dist_mean, dist_min, dist_max])
+
+                # agrega para por-phi
+                bucket = agg_phi.setdefault(phi, {"mean": [], "min": [], "max": [], "frac_unreach": []})
+                if not np.isnan(dist_mean):
+                    bucket["mean"].append(dist_mean)
+                    bucket["min"].append(dist_min)
+                    bucket["max"].append(dist_max)
+                if not np.isnan(frac_unreach):
+                    bucket["frac_unreach"].append(frac_unreach)
+
+    print(f"[OK] CSV por-run salvo: {out_por_run}")
+
+    # CSV agregado por-phi (média e desvio)
+    out_agregado = OUT_DIR / f"dist_min_agregado_{base_dirname}.csv"
+    with open(out_agregado, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["cenario_label", "cenario_tag", "phi",
+                    "dist_mean_avg", "dist_mean_std",
+                    "frac_unreach_avg", "frac_unreach_std",
+                    "n_runs_validos"])
+        for phi, d in sorted(agg_phi.items()):
+            means = d["mean"]
+            frus  = d["frac_unreach"]
+            dist_mean_avg = float(np.mean(means)) if means else np.nan
+            dist_mean_std = float(np.std(means, ddof=1)) if len(means) > 1 else 0.0
+            fr_avg = float(np.mean(frus)) if frus else np.nan
+            fr_std = float(np.std(frus, ddof=1)) if len(frus) > 1 else 0.0
+            n_ok = len(means)
+            w.writerow([label_tex, base_dirname, phi,
+                        dist_mean_avg, dist_mean_std,
+                        fr_avg, fr_std, n_ok])
+
+    print(f"[OK] CSV agregado salvo: {out_agregado}")
+
+    return out_por_run, out_agregado
+
+# ---------------------- main ----------------------
+def main():
+    csvs_por_run = []
+    csvs_agreg   = []
+    for label_tex, base_dirname in bases:
+        por_run, agreg = processar_cenario(label_tex, base_dirname)
+        csvs_por_run.append(por_run)
+        csvs_agreg.append(agreg)
+
+    # (opcional) plot rápido da média da distância vs phi por cenário
+    if FAZER_PLOT:
+        plt.figure(figsize=(10, 6), dpi=140)
+        ax = plt.gca()
+        cmap = plt.get_cmap("flag")
+
+        for k, (label_tex, base_dirname) in enumerate(bases):
+            # lê o CSV agregado de cada cenário
+            rows = []
+            with open(OUT_DIR / f"dist_min_agregado_{base_dirname}.csv", "r") as f:
+                rdr = csv.DictReader(f)
+                for r in rdr:
+                    try:
+                        phi = float(r["phi"])
+                        m   = float(r["dist_mean_avg"])
+                        s   = float(r["dist_mean_std"])
+                        rows.append((phi, m, s))
+                    except Exception:
+                        pass
+            if not rows:
+                continue
+            rows.sort(key=lambda t: t[0])
+            xs = [r[0] for r in rows]
+            ys = [r[1] for r in rows]
+            es = [r[2] for r in rows]
+            ax.errorbar(xs, ys, yerr=es, fmt="o-", ms=5, lw=1.6,
+                        capsize=3, color=cmap(k), label=label_tex)
+
+        ax.axvline(PHI_LINE, color="black", linestyle="--", lw=1.3, label=fr"$\phi_c \approx {PHI_LINE:.3f}$")
+        ax.set_xlabel(r"$\phi$")
+        ax.set_ylabel(r"Distância mínima média (escaper $\to$ chaser)")
+        ax.grid(True, linestyle="--", alpha=0.6)
+        ax.legend(frameon=False)
+        plt.tight_layout()
+        fig_png = OUT_DIR / "dist_min_vs_phi.png"
+        fig_pdf = OUT_DIR / "dist_min_vs_phi.pdf"
+        plt.savefig(fig_png, bbox_inches="tight")
+        plt.savefig(fig_pdf, bbox_inches="tight")
+        plt.show()
+        print(f"[OK] Figuras salvas:\n - {fig_png}\n - {fig_pdf}")
+
+if __name__ == "__main__":
+    main()

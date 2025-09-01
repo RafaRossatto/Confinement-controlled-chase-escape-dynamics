@@ -2,8 +2,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import re
-import csv
 
 # ---------------------- parâmetros ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
@@ -18,38 +16,70 @@ bases = [
 L = 128
 area = L**2
 BASE_RES = Path.home() / "Dados_Doc" / "Np=free*0.25" / "resultados_modelos"
-MODEL_TAG = "EXPbeta"  # mantendo o mesmo modelo para consistência
+MODEL_TAG = "EXPbeta"
 
-# Se o eixo é fração de OBSTÁCULOS, usar ~0.593; se for fração LIVRE, usar ~0.407
-PHI_CRIT = 0.592746
+# Paleta
+from matplotlib import colormaps
+cmap_flag = colormaps.get_cmap("flag")
 
-# Paleta discreta (cores bem distintas) a partir do tab20c
-cmap = plt.get_cmap("flag")
-markers = ["o", "o", "o"]
-
-# --------------------------------------------------------
-
+# ---------------------- funções auxiliares ----------------------
 def extrai_num_obs(nome_obs: str) -> int:
     return int(nome_obs.split("_")[1])
 
 def densidade_obs(num_obs: int) -> float:
     return num_obs / area
 
-plt.figure(figsize=(10, 6), dpi=150)
+def symmetric_offsets(n_series: int, delta: float = 0.25):
+    """Offsets simétricos: n=3 -> [-d, 0, +d]; n=2 -> [-d/2, +d/2]; n=4 -> [-1.5d,-0.5d,+0.5d,+1.5d]."""
+    idx = np.arange(n_series)
+    if n_series % 2 == 1:
+        center = n_series // 2
+        return (idx - center) * delta
+    else:
+        return (idx - (n_series - 1)/2) * delta
 
-# também vamos montar um CSV combinado (todas as bases, todos os runs)
-rows_all = []
-agg_rows = []
+def add_phi_separators_and_phi60(ax, phi_sorted, tick_positions):
+    # separadores em 0.05, 0.15, ..., até <0.90
+    for phi_sep in np.arange(0.05, min(0.90, max(phi_sorted)) + 1e-12, 0.10):
+        if np.isclose(phi_sep, 0.90):
+            continue
+        x_sep = np.interp(phi_sep, phi_sorted, tick_positions)
+        ax.axvline(x=x_sep, color="gray", linestyle="-", alpha=0.5, linewidth=1)
+    # linha especial em 0.60
+    x_phi60 = np.interp(0.60, phi_sorted, tick_positions)
+    ax.axvline(x=x_phi60, color="black", linestyle="--", linewidth=1.5, label=r"$\phi = 0.60$")
+
+def put_phi60_first_in_legend(ax):
+    handles, labels = ax.get_legend_handles_labels()
+    linha60, outros = [], []
+    for h, l in zip(handles, labels):
+        if r"$\phi = 0.60$" in l:
+            linha60.append((h, l))
+        else:
+            outros.append((h, l))
+    if linha60:
+        new_handles, new_labels = zip(*(linha60 + outros))
+        ax.legend(new_handles, new_labels, frameon=False)
+    else:
+        ax.legend(frameon=False)
+
+# ---------------------- MAIN ----------------------
+plt.figure(figsize=(12, 6), dpi=150)
+
+rows_all = []          # CSV combinado (todas as bases, todos os runs)
+phi_labels = []        # valores únicos de phi
+phi_to_index = {}      # mapeia phi -> índice categórico
+
+OFFSETS = symmetric_offsets(len(bases), delta=0.25)
 
 for base_idx, (label_tex, nc_tag) in enumerate(bases):
-    xs_phi, beta_mean, beta_std = [], [], []
-    rows_csv = []
+    phi_vals, beta_groups = [], []
 
     for obs_folder in obs_list:
         n_obs = extrai_num_obs(obs_folder)
         phi = densidade_obs(n_obs)
 
-        # arquivo esperado: params_por_run_EXPbeta_{NcTag}_s_obs_{N}.csv
+        # arquivo esperado
         fname = f"params_por_run_{MODEL_TAG}_{nc_tag}_s_obs_{n_obs:02d}.csv"
         fpath = BASE_RES / fname
         if not fpath.exists():
@@ -61,36 +91,19 @@ for base_idx, (label_tex, nc_tag) in enumerate(bases):
             print(f"[WARN] sem coluna 'beta' em: {fpath.name}")
             continue
 
-        m = float(df["beta"].mean())
-        s = float(df["beta"].std(ddof=1)) if len(df) > 1 else 0.0
-        n_runs = int(len(df))
-        sem = s / np.sqrt(n_runs) if n_runs > 0 else 0.0
+        beta_values = df["beta"].dropna().values
+        if len(beta_values) == 0:
+            continue
 
-        agg_rows.append({
-            "cenario_label": label_tex,
-            "cenario_tag": nc_tag,
-            "phi": phi,
-            "num_obs": n_obs,
-            "n_runs": n_runs,
-            "beta_mean": m,
-            "beta_std": s,
-            "beta_sem": sem,
-        })
+        if phi not in phi_to_index:
+            phi_to_index[phi] = len(phi_labels)
+            phi_labels.append(phi)
 
-        xs_phi.append(phi)
-        beta_mean.append(m)
-        beta_std.append(s)
+        phi_vals.append(phi_to_index[phi])
+        beta_groups.append(beta_values)
 
-        rows_csv.append({
-            "phi": phi,
-            "num_obs": n_obs,
-            "n_runs": int(len(df)),
-            "beta_mean": m,
-            "beta_std": s,
-        })
-
-        # também preencher CSV combinado com valores individuais (opcional para análises futuras)
-        for v in df["beta"].values:
+        # CSV combinado com valores individuais
+        for v in beta_values:
             rows_all.append({
                 "scenario": nc_tag,
                 "phi": phi,
@@ -98,139 +111,47 @@ for base_idx, (label_tex, nc_tag) in enumerate(bases):
                 "beta_run": float(v)
             })
 
-    if xs_phi:
-        xs_phi, beta_mean, beta_std = zip(*sorted(zip(xs_phi, beta_mean, beta_std)))
-        plt.errorbar(
-            xs_phi, beta_mean, yerr=beta_std,
-            fmt=markers[base_idx % len(markers)]+"-",
-            capsize=5, markersize=5,
-            color=cmap(base_idx),
-            label=label_tex
+    if beta_groups:
+        # ordenar por índice de phi e posicionar com offsets simétricos
+        phi_vals, beta_groups = zip(*sorted(zip(phi_vals, beta_groups)))
+        positions = np.array(phi_vals, dtype=float) + OFFSETS[base_idx]
+
+        plt.boxplot(
+            beta_groups,
+            positions=positions,
+            widths=0.2,
+            patch_artist=True,
+            boxprops=dict(facecolor=cmap_flag(base_idx), alpha=0.5),
+            medianprops=dict(color="black"),
+            whiskerprops=dict(color=cmap_flag(base_idx)),
+            capprops=dict(color=cmap_flag(base_idx)),
+            flierprops=dict(marker="o", markersize=3, alpha=0.4,
+                            markerfacecolor=cmap_flag(base_idx), markeredgecolor="none")
         )
+        # “handle” para legenda
+        plt.plot([], [], color=cmap_flag(base_idx), label=label_tex)
 
-        # salvar CSV por cenário (ordenado por phi)
-        if rows_csv:
-            out_csv = f"beta_vs_phi_{nc_tag}.csv"
-            with open(out_csv, "w", newline="") as f:
-                w = csv.DictWriter(f, fieldnames=list(rows_csv[0].keys()))
-                w.writeheader()
-                for r in sorted(rows_csv, key=lambda r: r["phi"]):
-                    w.writerow(r)
-            print(f"[OK] CSV salvo: {out_csv}")
-
-# salva CSV combinado (todas as bases, todos os runs)
+# ---------------------- salvar CSV combinado ----------------------
 if rows_all:
     df_all = pd.DataFrame(rows_all).sort_values(["scenario", "phi"])
     df_all.to_csv("beta_vs_phi__todas_bases__runs.csv", index=False)
     print("[OK] CSV salvo: beta_vs_phi__todas_bases__runs.csv")
 
-# ====================== PLOTS: 3 figuras (mean±std, mean, dispersão) ======================
-from matplotlib import colormaps
-cmap_flag = colormaps.get_cmap("flag")
+# ---------------------- decoração ----------------------
+phi_sorted = sorted(phi_labels)
+tick_positions = np.arange(len(phi_sorted))
+tick_labels = [f"{phi:.3f}" for phi in phi_sorted]
+plt.xticks(tick_positions, tick_labels, rotation=45)
 
-if not agg_rows:
-    raise SystemExit("[!] Sem dados agregados para plotar.")
+plt.xlabel(r"$\phi$")
+plt.ylabel(r"$\beta$")
+plt.grid(axis="y", linestyle="--", alpha=0.35)
 
-df_agg = pd.DataFrame(agg_rows).sort_values(["cenario_label", "phi"]).reset_index(drop=True)
-
-# CSV com estatísticas agregadas (útil p/ checar depois)
-df_agg.to_csv("beta_vs_phi__agg_stats.csv", index=False)
-print("[OK] CSV salvo: beta_vs_phi__agg_stats.csv")
-
-# Opções
-DISP_METRIC = "std"   # "std" (desvio-padrão) ou "sem" (erro-padrão da média)
-CLIP_NONNEG_ERR = False  # β costuma ser ≥0 pelo fit; ative True se quiser cortar barra inferior em 0
-
-# --- FIGURA 1: média ± desvio-padrão ---
-plt.figure(figsize=(10, 6), dpi=150)
+# separadores e linha 0.60
 ax = plt.gca()
+add_phi_separators_and_phi60(ax, phi_sorted, tick_positions)
+put_phi60_first_in_legend(ax)
 
-for base_idx, (label_tex, _nc_tag) in enumerate(bases):
-    sub = df_agg[df_agg["cenario_label"] == label_tex].sort_values("phi")
-    if sub.empty: 
-        continue
-    x = sub["phi"].to_numpy()
-    y = sub["beta_mean"].to_numpy()
-    base = sub["beta_std"].to_numpy()
-
-    if CLIP_NONNEG_ERR:
-        yerr_lower = np.minimum(y, base)  # garante y - err >= 0
-        yerr_upper = base
-        yerr = np.vstack([yerr_lower, yerr_upper])
-    else:
-        yerr = base  # barras simétricas
-
-    ax.errorbar(
-        x, y, yerr=yerr, fmt="o-", capsize=5, linewidth=1.6, markersize=5,
-        label=label_tex, color=cmap_flag(base_idx)
-    )
-
-ax.axvline(PHI_CRIT, color="black", linestyle="--", linewidth=1.5, label=rf"$\phi_c \approx {PHI_CRIT:.2f}$")
-ax.set_xlabel(r"$\phi$")
-ax.set_ylabel(r"Média de $\beta$ (barras $=\ \sigma$)")
-ax.grid(True, linestyle="--", alpha=0.6)
-ax.legend(frameon=False)
-ax.set_ylim(bottom=0)
 plt.tight_layout()
-plt.savefig("beta_mean_std_vs_phi.pdf", dpi=200, bbox_inches="tight")
-print("[OK] Figura: beta_mean_std_vs_phi.pdf")
+plt.savefig("beta_vs_phi_boxplot_sep.pdf", dpi=200)
 plt.show()
-
-# --- FIGURA 2: somente a média ---
-plt.figure(figsize=(10, 6), dpi=150)
-ax = plt.gca()
-ax.axvline(PHI_CRIT, color="black", linestyle="--", linewidth=1.5, label=rf"$\phi_c \approx {PHI_CRIT:.2f}$")
-for base_idx, (label_tex, _nc_tag) in enumerate(bases):
-    sub = df_agg[df_agg["cenario_label"] == label_tex].sort_values("phi")
-    if sub.empty: 
-        continue
-    ax.plot(
-        sub["phi"], sub["beta_mean"],
-        "o-", linewidth=1.6, markersize=5,
-        label=label_tex, color=cmap_flag(base_idx)
-    )
-
-ax.set_xlabel(r"$\phi$")
-ax.set_ylabel(r"$ \langle \beta \rangle $")
-ax.set_ylim(0.59,1.0)
-ax.grid(True, linestyle="--", alpha=0.6)
-ax.legend(frameon=False)
-#ax.set_ylim(bottom=0)
-plt.tight_layout()
-plt.savefig("beta_mean_vs_phi.pdf", dpi=200, bbox_inches="tight")
-print("[OK] Figura: beta_mean_vs_phi.pdf")
-plt.show()
-
-# --- FIGURA 3: dispersão (std/sem) vs phi ---
-plt.figure(figsize=(10, 6), dpi=150)
-ax = plt.gca()
-
-for base_idx, (label_tex, _nc_tag) in enumerate(bases):
-    sub = df_agg[df_agg["cenario_label"] == label_tex].sort_values("phi")
-    if sub.empty: 
-        continue
-    if DISP_METRIC == "sem":
-        y = sub["beta_sem"].to_numpy()
-        ylabel = r"Dispersão de $\beta$ (SEM)"
-    else:
-        y = sub["beta_std"].to_numpy()
-        ylabel = r"Dispersão de $\beta$ ($\sigma$)"
-
-    ax.plot(
-        sub["phi"], y,
-        "o-", linewidth=1.6, markersize=5,
-        label=label_tex, color=cmap_flag(base_idx)
-    )
-
-ax.axvline(PHI_CRIT, color="black", linestyle="--", linewidth=1.5)
-ax.set_xlabel(r"$\phi$")
-ax.set_ylabel(r"$\sigma$")
-ax.grid(True, linestyle="--", alpha=0.6)
-#ax.legend(frameon=False)
-ax.set_ylim(bottom=0)
-plt.tight_layout()
-suffix = DISP_METRIC
-plt.savefig(f"beta_disp_{suffix}_vs_phi.pdf", dpi=200, bbox_inches="tight")
-print(f"[OK] Figura: beta_disp_{suffix}_vs_phi.pdf")
-plt.show()
-
