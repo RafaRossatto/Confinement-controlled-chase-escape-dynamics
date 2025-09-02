@@ -25,7 +25,7 @@ OUT_DIR = BASE_ROOT / "resultados_modelos" / "zeros_escapers"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # plot
-PHI_LINE = 0.59
+PHI_LINE = 0.60
 CMAP_NAME = "flag"
 
 # normalização do eixo-Y (fração de zeros)
@@ -170,7 +170,7 @@ for base_idx, (label_tex, _dirname) in enumerate(bases):
 
 # linha de referência em φ = 0.59
 ax.axvline(0.59, color="black", linestyle="--", linewidth=1.5,
-           label=r"$\phi_c \approx 0.59$")
+           label=r"$\phi_c \approx 0.60$")
 
 ax.set_xlabel(r"$\phi$")
 ax.set_ylabel(r"$N^{E}_{t \to \infty}/N^{E}_{0}$")

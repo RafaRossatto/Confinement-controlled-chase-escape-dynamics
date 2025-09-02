@@ -6,7 +6,7 @@ import csv
 
 # ---------------------- parâmetros ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
-            "obs_8192", "obs_9830", "obs_11468", "obs_13107", "obs_14745"]
+            "obs_8192", "obs_9830", "obs_11468", "obs_13107"]
 
 bases = [
     (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
@@ -18,7 +18,7 @@ L = 128
 area = L**2
 BASE_RES = Path.home() / "Dados_Doc" / "Np=free*0.25" / "resultados_modelos"
 MODEL_TAG = "EXPbeta"
-PHI_CRIT_OBST = 0.592746
+PHI_CRIT_OBST = 0.60
 
 cmap = plt.get_cmap("flag")
 
@@ -104,8 +104,8 @@ if rows_all:
 # ---------------------- decoração ----------------------
 phi_sorted = sorted(phi_labels)
 tick_positions = np.arange(len(phi_sorted))
-tick_labels = [f"{phi:.3f}" for phi in phi_sorted]
-plt.xticks(tick_positions, tick_labels, rotation=45)
+tick_labels = [f"{phi:.1f}" for phi in phi_sorted]
+plt.xticks(tick_positions, tick_labels, rotation=0)
 
 plt.xlabel(r"$\phi$")
 plt.ylabel(r"$\tau$")
@@ -137,5 +137,5 @@ for h, l in zip(handles, labels):
 new_handles, new_labels = zip(*(linha60 + outros))
 plt.legend(new_handles, new_labels)
 plt.tight_layout()
-plt.savefig("tau_vs_phi_boxplot_blocos.pdf", dpi=200)
+plt.savefig("tau_vs_phi.pdf", dpi=200)
 plt.show()

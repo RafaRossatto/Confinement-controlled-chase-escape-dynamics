@@ -46,7 +46,7 @@ class Config:
     
     # Configuração da legenda
     LEGEND_FRAME = True
-    LEGEND_LOCATION = 'upper left'
+    LEGEND_LOCATION = 'lower left'
 
 config = Config()
 
@@ -226,16 +226,19 @@ def main():
     plt.xticks(tick_positions, tick_labels, rotation=0)  # rotation=0 para reto
 
     plt.xlabel(r"$\phi$")
-    plt.ylabel(r"$\langle \beta \rangle $")
+    plt.ylabel(r"$\beta $")
     plt.grid(axis="y", linestyle="--", alpha=0.35)
 
     # LIMITAR EIXO Y ATÉ 1.5
-    plt.ylim(0.1, 1.4)
+    plt.ylim(0.4, 1.0)
+    plt.xlim(-0.5, 8.5)
 
     # separadores e linha 0.60
     add_phi_separators_and_phi60(ax, phi_sorted, tick_positions)
     put_phi60_first_in_legend(ax)
 
+
+    """
     # CRIAR INSET APENAS COM OS PONTOS (β > 1.5)
     if all_beta_groups:  # Verificar se há dados
         max_beta = max([np.max(group) for group in all_beta_groups if len(group) > 0])
@@ -339,10 +342,10 @@ def main():
                 
                 # Adicionar fundo levemente colorido para melhor visualização
                 ax_inset.set_facecolor('#f8f9fa')
-    
+    """
     plt.tight_layout()
     plt.savefig("beta_vs_phi_boxplot_sep.pdf", dpi=200, bbox_inches='tight')
-    logger.info("Figura salva: beta_vs_phi_boxplot_sep.pdf")
+    logger.info("Figura salva: beta_vs_phi.pdf")
     
     plt.show()
     logger.info("Análise concluída com sucesso!")

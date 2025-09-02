@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 from matplotlib import colormaps
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes  # ADICIONAR IMPORT
 import logging
 from typing import List, Tuple, Dict, Optional
 from functools import lru_cache
@@ -52,6 +53,10 @@ class Config:
     # Escala logarítmica apenas no gráfico principal
     LOG_SCALE = True
     Y_LIM_LOG = (1, 1250)  # Começando em 1 na escala log
+    X_LIM = (-0.5, 8.5)  # Começando em 1 na escala log
+    # Configuração do inset
+    INSET_Y_RANGE = (1000, 1200)  # Faixa Y para o inset
+    INSET_PHI_RANGE = (0.65, 0.8)  # Faixa φ para o inset
 
 config = Config()
 OUT_DIR = config.BASE_ROOT / "resultados_modelos" / "zeros_escapers"
@@ -246,6 +251,80 @@ def put_phi60_first_in_legend(ax):
                  facecolor='white',      # Cor de fundo
                  fontsize=10)            # Tamanho da fonte
 
+def create_inset_zoom(ax, phi_labels, dados_por_cenario, offsets, phi_range, y_range):
+    """Cria inset de zoom para uma região específica."""
+    try:
+        ax_inset = inset_axes(ax, width="25%", height="25%", loc='upper right')
+        
+        cmap = colormaps.get_cmap(config.PLOT_PARAMS['cmap_name'])
+        tick_positions = np.arange(len(phi_labels))
+        
+        # Coletar dados para a faixa de φ especificada
+        for base_idx, label_tex, triplets in dados_por_cenario:
+            groups = []
+            pos_idx = []
+            
+            for phi, _n_obs, arr in triplets:
+                if phi_range[0] <= phi <= phi_range[1]:
+                    idx = phi_labels.index(phi)
+                    pos_idx.append(idx)
+                    groups.append(arr)
+            
+            if not groups:
+                continue
+                
+            pos_idx, groups = zip(*sorted(zip(pos_idx, groups)))
+            positions = np.array(pos_idx, dtype=float) + offsets[base_idx]
+            
+            # Boxplot no inset
+            ax_inset.boxplot(
+                groups,
+                positions=positions,
+                widths=config.PLOT_PARAMS['boxplot_width'],
+                patch_artist=True,
+                boxprops=dict(facecolor=cmap(base_idx), alpha=0.5),
+                medianprops=dict(color="black"),
+                whiskerprops=dict(color=cmap(base_idx)),
+                capprops=dict(color=cmap(base_idx)),
+                flierprops=dict(marker="o", markersize=3, alpha=0.4,
+                              markerfacecolor=cmap(base_idx), markeredgecolor="none")
+            )
+        
+        # Configurar eixo do inset - ESCALA NORMAL
+        phi_sorted = sorted(phi_labels)
+        phi_in_range = [phi for phi in phi_sorted if phi_range[0] <= phi <= phi_range[1]]
+        
+        if phi_in_range:
+            # Encontrar posições dos ticks
+            tick_positions_inset = []
+            tick_labels_inset = []
+            for phi in phi_in_range:
+                idx = phi_sorted.index(phi)
+                tick_positions_inset.append(idx)
+                tick_labels_inset.append(f"{phi:.1f}")
+            
+            ax_inset.set_xticks(tick_positions_inset)
+            ax_inset.set_xticklabels(tick_labels_inset, rotation=0, fontsize=8)
+        
+        # Configurar limites do inset
+        ax_inset.set_xlim(
+            np.interp(phi_range[0], phi_sorted, tick_positions) - 0.5,
+            np.interp(phi_range[1], phi_sorted, tick_positions) + 0.5
+        )
+        ax_inset.set_ylim(y_range[0], y_range[1])
+        
+        ax_inset.set_ylabel('Passos', fontsize=9)
+        ax_inset.set_xlabel(r'$\phi$', fontsize=9)
+        #ax_inset.set_title(f'Zoom: {y_range[0]}-{y_range[1]} passos', fontsize=10)
+        ax_inset.grid(True, alpha=0.3)
+        ax_inset.tick_params(labelsize=8)
+        
+        return ax_inset
+        
+    except Exception as e:
+        logger.warning(f"Erro ao criar inset: {e}")
+        return None
+
 # ---------------------- Função Principal ----------------------
 def main():
     """Função principal executável."""
@@ -334,15 +413,14 @@ def main():
     
     # Configurar eixo com escala logarítmica COMEÇANDO EM 1
     ax.set_xticks(tick_positions)
-    # MUDANÇA AQUI: uma casa decimal e sem rotação
-    ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels], rotation=0)  # rotation=0 para reto
+    ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels], rotation=0)
     ax.set_xlabel(r"$\phi$")
     
     if config.LOG_SCALE:
         ax.set_yscale('log')
-        ax.set_ylabel("Passos por run até a captura (escala logarítmica)")
-        # COMEÇANDO EM 1 na escala log
+        ax.set_ylabel(r"$TT $")
         ax.set_ylim(config.Y_LIM_LOG[0], config.Y_LIM_LOG[1])
+        ax.set_xlim(config.X_LIM[0], config.X_LIM[1])
     else:
         ax.set_ylabel("Passos por run até a captura (distribuição)")
     
@@ -350,21 +428,25 @@ def main():
     
     # Adicionar separadores
     add_phi_separators_and_phi60(ax, phi_labels, tick_positions)
-    
-    # Legenda com quadro - INSET ELIMINADO
+    """
+    # CRIAR INSET COM ZOOM
+    create_inset_zoom(ax, phi_labels, dados_por_cenario, offsets, 
+                     config.INSET_PHI_RANGE, config.INSET_Y_RANGE)
+    """
+    # Legenda com quadro
     put_phi60_first_in_legend(ax)
     
     # Adicionar título informativo
-    if config.LOG_SCALE:
-        ax.set_title("Distribuição de Passos até a Captura - Escala Logarítmica")
+    #if config.LOG_SCALE:
+        #ax.set_title("Distribuição de Passos até a Captura - Escala Logarítmica")
     
     # Layout e salvamento
     plt.tight_layout()
     
     if config.LOG_SCALE:
-        out_fig = OUT_DIR / "steps_vs_phi_boxplot_log_no_inset.pdf"
+        out_fig = OUT_DIR / "steps_vs_phi_boxplot_log_with_inset.pdf"
     else:
-        out_fig = OUT_DIR / "steps_vs_phi_boxplot_no_inset.pdf"
+        out_fig = OUT_DIR / "steps_vs_phi_boxplot_with_inset.pdf"
         
     plt.savefig(out_fig, dpi=200, bbox_inches='tight')
     logger.info(f"Figura salva: {out_fig}")

@@ -12,7 +12,7 @@ from networkx.algorithms.shortest_paths.weighted import multi_source_dijkstra_pa
 
 # ---------------------- parâmetros (iguais aos seus) ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
-            "obs_8192", "obs_9830", "obs_11468", "obs_13107", "obs_14745"]
+            "obs_8192", "obs_9830", "obs_11468", "obs_13107"]
 
 bases = [
     (r"$N_C=0.5\,N_P$", "Nc=Np*0.5"),
@@ -26,7 +26,7 @@ NUM_RUNS = 100
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
 
 # Percolação (linha de referência)
-PHI_LINE = 0.592746
+PHI_LINE = 0.60
 
 # Saídas
 OUT_DIR = BASE_ROOT / "resultados_modelos" / "dist_min"
@@ -282,11 +282,11 @@ def main():
             ax.errorbar(xs, ys, yerr=es, fmt="o-", ms=5, lw=1.6,
                         capsize=3, color=cmap(k), label=label_tex)
 
-        ax.axvline(PHI_LINE, color="black", linestyle="--", lw=1.3, label=fr"$\phi_c \approx {PHI_LINE:.3f}$")
+        ax.axvline(PHI_LINE, color="black", linestyle="--", lw=1.3, label=fr"$\phi_c \approx {PHI_LINE:.2f}$")
         ax.set_xlabel(r"$\phi$")
-        ax.set_ylabel(r"Distância mínima média (escaper $\to$ chaser)")
+        ax.set_ylabel(r"$\langle d \rangle$")
         ax.grid(True, linestyle="--", alpha=0.6)
-        ax.legend(frameon=False)
+        ax.legend(frameon=True)
         plt.tight_layout()
         fig_png = OUT_DIR / "dist_min_vs_phi.png"
         fig_pdf = OUT_DIR / "dist_min_vs_phi.pdf"

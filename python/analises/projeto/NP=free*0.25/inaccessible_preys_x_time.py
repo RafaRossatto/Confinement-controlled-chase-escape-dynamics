@@ -13,7 +13,7 @@ from networkx.algorithms.shortest_paths.weighted import multi_source_dijkstra_pa
 
 # ---------------------- parâmetros principais ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
-            "obs_8192", "obs_9830", "obs_11468", "obs_13107", "obs_14745"]
+            "obs_8192", "obs_9830", "obs_11468", "obs_13107"]
 
 bases = [
     (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
@@ -251,7 +251,7 @@ def main():
 
     # linha de referência (percolação de sítio ~0.592746; você marcou φ no eixo)
     plt.axvline(x=PHI_LINE, color='black', linestyle='--', linewidth=1.5,
-                label=r'$\phi_{c} \approx 0.59$')
+                label=r'$\phi_{c} = 0.60$')
 
     plt.xlabel(r"$\phi$")
     plt.ylabel(r"$N^{E}_{\text{inacc}}/N^{E}_{0}$")
