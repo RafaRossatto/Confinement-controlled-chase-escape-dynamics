@@ -11,6 +11,14 @@ from typing import List, Tuple, Optional, Dict
 import networkx as nx
 from networkx.algorithms.shortest_paths.weighted import multi_source_dijkstra_path_length
 
+
+# --- Configuração global de fonte nos eixos e legenda ---
+plt.rcParams.update({
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14
+})
+
 # ---------------------- parâmetros principais ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
             "obs_8192", "obs_9830", "obs_11468", "obs_13107"]
@@ -253,8 +261,9 @@ def main():
     plt.axvline(x=PHI_LINE, color='black', linestyle='--', linewidth=1.5,
                 label=r'$\phi_{c} = 0.60$')
 
-    plt.xlabel(r"$\phi$")
-    plt.ylabel(r"$N^{E}_{\text{inacc}}/N^{E}_{0}$")
+    plt.xlabel(r"$\phi$", fontsize=22)
+    plt.ylabel(r"$N^{E}_{\text{inacc}}/N^{E}_{0}$" , fontsize=20)
+
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.legend()
     plt.tight_layout()

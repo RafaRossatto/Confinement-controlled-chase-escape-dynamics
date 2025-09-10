@@ -12,272 +12,10 @@
 #include <algorithm> 
 #include <array> 
 #include <iomanip>
+
 std::random_device rd;
 unsigned int GLOBAL_SEED = rd();
-double CTPROBABILITY = 1.00; // probabilidade de capturar ou procurar comida
-double CCPROBABILITY = 1.00; // probabilidade de escapar ou procurar comida
 
-void setCTPROBABILITY(double newValue)
-{
-    CTPROBABILITY = newValue;
-}
-
-void setCCPROBABILITY(double newValue)
-{
-    CCPROBABILITY = newValue;
-}
-
-
-
-int contarAlvosAoRedor(int x, int y,
-    const std::vector<Cell>& agentes,
-    const CellLattice& lattice,
-    const std::vector<std::string>& tipos,
-    int sigma = 2)
-{
-int count = 0;
-for (const auto& a : agentes) {
-if (std::find(tipos.begin(), tipos.end(), a.getTipo()) == tipos.end())
-continue;
-
-double dist = lattice.calculateDistance(x, y, a.getCoordenadaX(), a.getCoordenadaY());
-if (dist <= sigma + 1e-6)
-++count;
-}
-return count;
-}
-
-
-void moverCelulaRuim(CellLattice& lattice, Cell& cell,
-    std::vector<Cell>& cT, std::vector<Cell>& cC,
-    std::vector<Obstacle>& obstacles,
-    std::mt19937& rng, bool checkcC, int SR)
-{
-    int x = cell.getCoordenadaX();
-    int y = cell.getCoordenadaY();
-    int newX = x, newY = y;
-
-    const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
-    std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
-    std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
-
-// 1. Coleta todos os caçadores adjacentes
-std::vector<std::pair<int, int>> cacadoresAdjacentes;
-
-for (Direction dir : direcoesEmbaralhadas)
-{
-    int adjX = x, adjY = y;
-    cell.randonWalk(adjX, adjY, dir);
-    for (const auto& hunter : cT)
-    {
-        if (hunter.getCoordenadaX() == adjX && hunter.getCoordenadaY() == adjY)
-        {
-            cacadoresAdjacentes.emplace_back(adjX, adjY);
-            break;
-        }
-    }
-}
-
-// 2. Se houver caçadores adjacentes → escolher aleatoriamente um e fugir para posição livre qualquer
-if (!cacadoresAdjacentes.empty())
-{
-    // Não usamos diretamente o caçador escolhido, só sorteamos para satisfazer a regra
-    std::shuffle(cacadoresAdjacentes.begin(), cacadoresAdjacentes.end(), rng);
-    auto [cacadorX, cacadorY] = cacadoresAdjacentes.front();
-
-    // Agora tentamos fugir para uma direção livre
-    std::vector<Direction> direcoesLivres;
-    for (Direction dir : direcoesEmbaralhadas)
-    {
-        int tempX = x, tempY = y;
-        cell.randonWalk(tempX, tempY, dir);
-
-        if (!lattice.isOccupied(tempX, tempY, cT, cC, obstacles, checkcC))
-            direcoesLivres.push_back(dir);
-    }
-
-    if (!direcoesLivres.empty())
-    {
-        std::shuffle(direcoesLivres.begin(), direcoesLivres.end(), rng);
-        Direction fuga = direcoesLivres.front();
-        cell.randonWalk(newX, newY, fuga);
-
-        lattice.setGridValue(x, y, "L");
-        cell.changePosition(newX, newY);
-        lattice.setGridValue(newX, newY, "O");
-    }
-
-    return; // mesmo que fique parado
-}
-
-    // 3. Se não há caçador adjacente → estratégia de densidade
-    std::vector<Cell> celulas;
-    celulas.insert(celulas.end(), cT.begin(), cT.end());
-    celulas.insert(celulas.end(), cC.begin(), cC.end());
-
-    int densidadeAtual = contarAlvosAoRedor(x, y, celulas, lattice, {"N"}, SR);
-    int menorDensidade = densidadeAtual;
-    std::vector<Direction> melhoresDirecoes;
-
-    for (Direction dir : direcoesEmbaralhadas)
-    {
-        int tempX = x, tempY = y;
-        cell.randonWalk(tempX, tempY, dir);
-        if (lattice.isOccupied(tempX, tempY, cT, cC, obstacles, checkcC))
-            continue;
-
-        int densidadeVizinha = contarAlvosAoRedor(tempX, tempY, celulas, lattice, {"N"}, SR);
-        if (densidadeVizinha < menorDensidade)
-        {
-            menorDensidade = densidadeVizinha;
-            melhoresDirecoes.clear();
-            melhoresDirecoes.push_back(dir);
-        }
-        else if (densidadeVizinha == menorDensidade)
-        {
-            melhoresDirecoes.push_back(dir);
-        }
-    }
-
-    if (!melhoresDirecoes.empty())
-    {
-        std::shuffle(melhoresDirecoes.begin(), melhoresDirecoes.end(), rng);
-        Direction melhor = melhoresDirecoes.front();
-        cell.randonWalk(newX, newY, melhor);
-    }
-    else
-    {
-        std::uniform_int_distribution<int> dir(0, 3);
-        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-    }
-
-    if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC))
-    {
-        lattice.setGridValue(x, y, "L");
-        cell.changePosition(newX, newY);
-        lattice.setGridValue(newX, newY, "O");
-    }
-}
-
-
-
-
-
-void moverCelulaBoa(CellLattice& lattice, Cell& cell,
-    std::vector<Cell>& cT, std::vector<Cell>& cC,
-    std::vector<Obstacle>& obstacles,
-    std::mt19937& rng, bool checkcC, int SR)
-{
-    int x = cell.getCoordenadaX();
-    int y = cell.getCoordenadaY();
-    int newX = x, newY = y;
-    std::bernoulli_distribution d(CTPROBABILITY);
-    bool movimentoInteligente = d(rng);
-
-    const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
-    std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
-    std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
-
-    if (movimentoInteligente)
-    {
-        // 1. Verifica se há presa adjacente
-        std::vector<Direction> presasAdjacentes;
-        for (Direction dir : direcoesEmbaralhadas)
-        {
-            int tempX = x, tempY = y;
-            cell.randonWalk(tempX, tempY, dir);
-            for (const auto& presa : cC)
-            {
-                if (presa.getCoordenadaX() == tempX && presa.getCoordenadaY() == tempY)
-                {
-                    presasAdjacentes.push_back(dir);
-                    break;
-                }
-            }
-        }
-
-        // 2. Se houver presa adjacente → captura uma aleatória
-        if (!presasAdjacentes.empty())
-        {
-            std::shuffle(presasAdjacentes.begin(), presasAdjacentes.end(), rng);
-            Direction dir = presasAdjacentes.front();
-            cell.randonWalk(newX, newY, dir);
-
-            // Captura a presa naquela posição
-            for (auto it = cC.begin(); it != cC.end(); )
-            {
-                if (it->getCoordenadaX() == newX && it->getCoordenadaY() == newY)
-                {
-                    lattice.setGridValue(it->getCoordenadaX(), it->getCoordenadaY(), "L");    
-                    it = cC.erase(it);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-
-            lattice.setGridValue(x, y, "L");
-            cell.changePosition(newX, newY);
-            lattice.setGridValue(newX, newY, "N");
-            return;
-        }
-
-        // 3. Caso não haja presa adjacente → seguir a densidade
-        std::vector<Cell> celulas;
-        celulas.insert(celulas.end(), cT.begin(), cT.end());
-        celulas.insert(celulas.end(), cC.begin(), cC.end());
-
-        int densidadeAtual = contarAlvosAoRedor(x, y, celulas, lattice, {"O"}, SR);
-        int maiorDensidade = densidadeAtual;
-        std::vector<Direction> melhoresDirecoes;
-
-        for (Direction dir : direcoesEmbaralhadas)
-        {
-            int tempX = x, tempY = y;
-            cell.randonWalk(tempX, tempY, dir);
-            if (lattice.isOccupied(tempX, tempY, cT, cC, obstacles, checkcC))
-                continue;
-
-            int densidadeVizinha = contarAlvosAoRedor(tempX, tempY, celulas, lattice, {"O"}, SR);
-            if (densidadeVizinha > maiorDensidade)
-            {
-                maiorDensidade = densidadeVizinha;
-                melhoresDirecoes.clear();
-                melhoresDirecoes.push_back(dir);
-            }
-            else if (densidadeVizinha == maiorDensidade)
-            {
-                melhoresDirecoes.push_back(dir);
-            }
-        }
-
-        if (!melhoresDirecoes.empty())
-        {
-            std::shuffle(melhoresDirecoes.begin(), melhoresDirecoes.end(), rng);
-            Direction melhor = melhoresDirecoes.front();
-            cell.randonWalk(newX, newY, melhor);
-        }
-        else
-        {
-            std::uniform_int_distribution<int> dir(0, 3);
-            cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-        }
-    }
-    else
-    {
-        // Movimento totalmente aleatório
-        std::uniform_int_distribution<int> dir(0, 3);
-        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
-    }
-
-    if (!lattice.isOccupied(newX, newY, cT, cC, obstacles, checkcC))
-    {
-        lattice.setGridValue(x, y, "L");
-        cell.changePosition(newX, newY);
-        lattice.setGridValue(newX, newY, "N");
-    }
-}
 
 void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int numPoint,
     double ncNoise_ct, double ncNoise_cc, const std::string& fileName, 
@@ -315,15 +53,13 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
         std::string ObsStr = "obs_" + oss_obs.str();  // por exemplo, o_15
 
         std::string caminhoArquivo = "../" + ObsStr + "/" + ncStr + "/" + runStr + "/inaccessible_preys.txt";
-
-
         std::vector<Cell> cT_local, cC_local;
         std::vector<Obstacle> point_local = point;
         
         std::ifstream arquivo(caminhoArquivo);
         if (!arquivo.is_open()) 
             {
-                std::cerr << "Erro ao abrir o arquivo: " << caminhoArquivo << std::endl;
+                logError("Erro ao abrir o arquivo: " + (caminhoArquivo));
                     continue; // pula a simulação se não conseguir abrir
             }
 
@@ -349,7 +85,8 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
         if (!evoFile.is_open()) 
         {
             #pragma omp critical
-            std::cerr << "Erro ao criar evoFile da run " << run << std::endl;
+            logError("Erro ao criar evoFile da run " + std::to_string(run));
+            
             continue;
         }
         // Registra o tempo inicial com total de cC
@@ -377,7 +114,7 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
                     if (cel.getCoordenadaX() == x_rand && cel.getCoordenadaY() == y_rand) 
                     {
                         verificacC = false;
-                        moverCelulaBoa(lattice, cel, cT_local, cC_local, point_local, rng_local, verificacC,2);
+                        lattice.moverCelulaBoa(cel, cT_local, cC_local, point_local, rng_local, verificacC,2);
                         encontrou = true;
                         break;
                     }
@@ -390,7 +127,7 @@ void executarRodadas(CellLattice& lattice, int count, int numCT, int numcC, int 
                         if (cel.getCoordenadaX() == x_rand && cel.getCoordenadaY() == y_rand) 
                         {
                         verificacC = true;
-                        moverCelulaRuim(lattice, cel, cT_local, cC_local, point_local, rng_local, verificacC,2);
+                        lattice.moverCelulaRuim(cel, cT_local, cC_local, point_local, rng_local, verificacC,2);
                         break;
                         }
                     }
@@ -427,10 +164,10 @@ int main()
     CAPTUREPROBABILITY = 1.0;
 
     //std::vector<int> numcT_values = {5,10,50,100,500,1000,1500};       // <- número de presas
-    std::vector<int> numcT_values = {100,500,1000,1500};
+    std::vector<int> numcT_values = {1024};
     //std::vector<int> numPoint_values = {1638,3276,4915,6553,8192
       //                                  ,9830,11468,13107,14745};    // <- número de obstáculos
-    std::vector<int> numPoint_values = {11468};    // <- número de obstáculos
+    std::vector<int> numPoint_values = {8192};    // <- número de obstáculos
     std::vector<double> numNoise_ct = {1.00};
     std::vector<double> numNoise_cc = {1.00};
 
@@ -460,16 +197,15 @@ int main()
                 for (int numCT_value : numcT_values) 
                 {
                     numCT = numCT_value;
-                    numcC = (numFree)/2;  // resto do espaço livre
+                    numcC = (numFree)/4;  // resto do espaço livre
                     if (numcC < 0) {
-                        std::cerr << "Configuração inválida: mais presas que espaço livre na grade!\n";
+                        logError("Configuração inválida: mais presas que espaço livre na grade!");
                         continue;
                     }
 
                     cT.clear();
                     cC.clear();
                     point.clear();
-
                     std::string fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, sr_normal, sr_cancer);
                     executarRodadas(lattice, count, numCT, numcC, numPoint, ncNoise_ct, ncNoise_cc, fileName, point, sr_normal, sr_cancer);
                 }

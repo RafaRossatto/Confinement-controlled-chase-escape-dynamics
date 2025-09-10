@@ -4,6 +4,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import csv
 
+
+# --- Configuração global de fonte nos eixos e legenda ---
+plt.rcParams.update({
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14
+})
+
 # ---------------------- parâmetros ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
             "obs_8192", "obs_9830", "obs_11468", "obs_13107"]
@@ -107,10 +115,11 @@ tick_positions = np.arange(len(phi_sorted))
 tick_labels = [f"{phi:.1f}" for phi in phi_sorted]
 plt.xticks(tick_positions, tick_labels, rotation=0)
 
-plt.xlabel(r"$\phi$")
-plt.ylabel(r"$\tau$")
-plt.grid(axis="y", linestyle="--", alpha=0.25)
 
+
+plt.xlabel(r"$\phi$", fontsize=22)   # aumenta o tamanho do texto do eixo X
+plt.ylabel(r"$\tau$", fontsize=22)  # aumenta o tamanho do texto do eixo Y
+plt.grid(axis="y", linestyle="--", alpha=0.25)
 # --- linhas verticais em 0.05, 0.15, 0.25, ... ---
 for phi_sep in np.arange(0.05, max(phi_sorted), 0.10):
     # converter o valor real de phi para posição no eixo categórico
@@ -123,6 +132,11 @@ plt.axvline(x=x_phi60, color="black", linestyle="--", linewidth=1.5,
 
 # pegar handles e labels
 handles, labels = plt.gca().get_legend_handles_labels()
+
+
+#plt.ylim(0.4, 1.0)
+plt.xlim(-0.5, 8.5)
+
 
 # separar a linha phi=0.60
 linha60 = []

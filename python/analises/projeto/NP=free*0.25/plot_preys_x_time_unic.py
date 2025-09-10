@@ -14,6 +14,13 @@ from scipy.stats import shapiro, chi2
 import statsmodels.api as sm
 from statsmodels.stats.diagnostic import het_breuschpagan
 
+# --- Configuração global de fonte nos eixos e legenda ---
+plt.rcParams.update({
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14
+})
+
 # ============================
 # Modelos e utilidades gerais
 # ============================

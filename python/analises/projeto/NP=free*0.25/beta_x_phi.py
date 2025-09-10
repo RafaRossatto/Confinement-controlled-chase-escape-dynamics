@@ -17,6 +17,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+# --- Configuração global de fonte nos eixos e legenda ---
+plt.rcParams.update({
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 16
+})
+
 # ---------------------- parâmetros ----------------------
 class Config:
     OBS_LIST = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
@@ -108,10 +116,10 @@ def put_phi60_first_in_legend(ax):
                  loc=config.LEGEND_LOCATION,
                  fancybox=True,          # Bordas arredondadas
                  shadow=False,            # Sombra
-                 framealpha=0.8,         # Transparência do fundo
-                 edgecolor='black',      # Cor da borda
+                 framealpha=0.5,         # Transparência do fundo
+                 edgecolor='grey',      # Cor da borda
                  facecolor='white',      # Cor de fundo
-                 fontsize=10)            # Tamanho da fonte
+                 fontsize=14)            # Tamanho da fonte
 
 @lru_cache(maxsize=32)
 def ler_csv_com_fallback(fp: Path) -> pd.DataFrame:
@@ -202,7 +210,7 @@ def main():
                 widths=config.PLOT_PARAMS['boxplot_width'],
                 patch_artist=True,
                 boxprops=dict(facecolor=cmap_flag(base_idx), alpha=0.5),
-                medianprops=dict(color="black"),
+                medianprops=dict(color="grey"),
                 whiskerprops=dict(color=cmap_flag(base_idx)),
                 capprops=dict(color=cmap_flag(base_idx)),
                 flierprops=dict(marker="o", markersize=3, alpha=0.4,
@@ -225,8 +233,8 @@ def main():
     tick_labels = [f"{phi:.1f}" for phi in phi_sorted]
     plt.xticks(tick_positions, tick_labels, rotation=0)  # rotation=0 para reto
 
-    plt.xlabel(r"$\phi$")
-    plt.ylabel(r"$\beta $")
+    plt.xlabel(r"$\phi$", fontsize=20)   # aumenta o tamanho do texto do eixo X
+    plt.ylabel(r"$\beta$", fontsize=20)  # aumenta o tamanho do texto do eixo Y
     plt.grid(axis="y", linestyle="--", alpha=0.35)
 
     # LIMITAR EIXO Y ATÉ 1.5
@@ -237,112 +245,6 @@ def main():
     add_phi_separators_and_phi60(ax, phi_sorted, tick_positions)
     put_phi60_first_in_legend(ax)
 
-
-    """
-    # CRIAR INSET APENAS COM OS PONTOS (β > 1.5)
-    if all_beta_groups:  # Verificar se há dados
-        max_beta = max([np.max(group) for group in all_beta_groups if len(group) > 0])
-        if max_beta > 1.5:
-            ax_inset = inset_axes(ax, width="25%", height="25%", loc="upper center")
-            
-            # Valores de φ que queremos mostrar no inset
-            target_phis = [0.85, 0.9, 1.0]  # 0.8, 0.9, 1.0
-            actual_phis = []  # Para armazenar os valores reais de φ encontrados
-            all_inset_points = []  # Para todos os pontos do inset
-            
-            # Coletar pontos para os φ alvo
-            for pos, target_phi in enumerate(target_phis):
-                # Encontrar o φ mais próximo disponível nos dados
-                closest_phi = None
-                min_diff = float('inf')
-                
-                for available_phi in phi_labels:
-                    diff = abs(available_phi - target_phi)
-                    if diff < min_diff:
-                        min_diff = diff
-                        closest_phi = available_phi
-                
-                if closest_phi is not None:
-                    # Coletar todos os pontos β > 1.5 para este φ
-                    phi_points = []
-                    
-                    for base_idx, (label_tex, nc_tag) in enumerate(config.BASES):
-                        for obs_folder in config.OBS_LIST:
-                            n_obs = extrai_num_obs(obs_folder)
-                            phi_val = densidade_obs(n_obs)
-                            
-                            if abs(phi_val - closest_phi) < 0.001:  # Tolerância
-                                fname = f"params_por_run_{config.MODEL_TAG}_{nc_tag}_s_obs_{n_obs:02d}.csv"
-                                fpath = config.BASE_RES / fname
-                                
-                                if fpath.exists():
-                                    df = ler_csv_com_fallback(fpath)
-                                    if not df.empty and "beta" in df.columns:
-                                        beta_values = df["beta"].dropna().values
-                                        beta_values_above = beta_values[beta_values > 1.5]
-                                        if len(beta_values_above) > 0:
-                                            # Adicionar cada ponto individualmente
-                                            for beta_val in beta_values_above:
-                                                phi_points.append(beta_val)
-                                                all_inset_points.append((pos, beta_val))
-                                    break  # Sair do loop de obs_folder
-                    
-                    if phi_points:
-                        # Plotar todos os pontos para este φ
-                        ax_inset.scatter(
-                            [pos] * len(phi_points),  # X position
-                            phi_points,               # Y values
-                            color=cmap_flag(base_idx % len(config.BASES)),  # Cor por cenário
-                            alpha=0.6,
-                            s=25,                     # Tamanho dos pontos
-                            edgecolor='white',
-                            linewidth=0.5,
-                            zorder=10                 # Para ficar acima de outros elementos
-                        )
-                        actual_phis.append(closest_phi)
-            
-            if all_inset_points:
-                # CONFIGURAÇÃO DOS TICKS - três colunas: 0.8, 0.9, 1.0
-                ax_inset.set_xticks([0, 1, 2])
-                
-                # Usar os valores reais encontrados ou os target se não encontrou
-                tick_labels = []
-                for i in range(3):
-                    if i < len(actual_phis):
-                        tick_labels.append(f"{actual_phis[i]:.1f}")
-                    else:
-                        tick_labels.append(f"{target_phis[i]:.1f}")
-                
-                ax_inset.set_xticklabels(tick_labels, rotation=0, fontsize=9)
-                
-                # Configurar limites e aparência
-                ax_inset.set_xlim(-0.5, 2.5)  # Espaço para 3 colunas
-                
-                # Ajustar limites Y para focar nos pontos
-                y_values = [point[1] for point in all_inset_points]
-                y_min = min(y_values) if y_values else 1.4
-                y_max = max(y_values) if y_values else 3.0
-                #ax_inset.set_ylim(max(1.4, y_min * 0.95), y_max * 1.05)
-                ax_inset.set_ylim(1.4, 4)
-                
-                
-                #ax_inset.set_title('Pontos com β > 1.5', fontsize=10, pad=8)
-                ax_inset.set_ylabel(r'$\langle \beta \rangle$', fontsize=9)
-                ax_inset.set_xlabel(r'$\phi$', fontsize=9)
-                ax_inset.grid(True, alpha=0.3, axis='y')
-                ax_inset.tick_params(labelsize=8)
-                
-                # Adicionar legenda apenas para a linha de referência
-                #ax_inset.legend(fontsize=8, framealpha=0.8, loc='upper left')
-                
-                # Adicionar borda ao inset para melhor destaque
-                for spine in ax_inset.spines.values():
-                    spine.set_edgecolor('gray')
-                    spine.set_linewidth(1)
-                
-                # Adicionar fundo levemente colorido para melhor visualização
-                ax_inset.set_facecolor('#f8f9fa')
-    """
     plt.tight_layout()
     plt.savefig("beta_vs_phi_boxplot_sep.pdf", dpi=200, bbox_inches='tight')
     logger.info("Figura salva: beta_vs_phi.pdf")

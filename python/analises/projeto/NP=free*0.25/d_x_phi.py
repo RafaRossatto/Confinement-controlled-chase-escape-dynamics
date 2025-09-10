@@ -14,6 +14,15 @@ from networkx.algorithms.shortest_paths.weighted import multi_source_dijkstra_pa
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
             "obs_8192", "obs_9830", "obs_11468", "obs_13107"]
 
+
+# --- Configuração global de fonte nos eixos e legenda ---
+plt.rcParams.update({
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14
+})
+
+
 bases = [
     (r"$N_C=0.5\,N_P$", "Nc=Np*0.5"),
     (r"$N_C=0.8\,N_P$", "Nc=Np*0.8"),
@@ -283,8 +292,8 @@ def main():
                         capsize=3, color=cmap(k), label=label_tex)
 
         ax.axvline(PHI_LINE, color="black", linestyle="--", lw=1.3, label=fr"$\phi_c \approx {PHI_LINE:.2f}$")
-        ax.set_xlabel(r"$\phi$")
-        ax.set_ylabel(r"$\langle d \rangle$")
+        ax.set_xlabel(r"$\phi$", fontsize=22)
+        ax.set_ylabel(r"$\langle d \rangle$",fontsize=22)
         ax.grid(True, linestyle="--", alpha=0.6)
         ax.legend(frameon=True)
         plt.tight_layout()

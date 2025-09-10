@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <algorithm> 
 #include <random>            // para std::mt19937
 #include "obstacle.h"        // para classe Obstacle
 
@@ -56,6 +57,21 @@ class CellLattice
                     const std::vector<Cell>& cancerCells,
                     const std::vector<Obstacle>& obstacles,
                     bool checkCancer) const;
+
+    int contarAlvosAoRedor(int x, int y,
+                        const std::vector<Cell>& agentes,
+                        const std::vector<std::string>& tipos,
+                        int sigma = 2) const;
+                    
+    void moverCelulaRuim(Cell& cell,
+                      std::vector<Cell>& cT, std::vector<Cell>& cC,
+                      std::vector<Obstacle>& obstacles,
+                      std::mt19937& rng, bool checkcC, int SR);
+                    
+    void moverCelulaBoa(Cell& cell,
+                     std::vector<Cell>& cT, std::vector<Cell>& cC,
+                     std::vector<Obstacle>& obstacles,
+                     std::mt19937& rng, bool checkcC, int SR);
 };
 
 
@@ -79,6 +95,5 @@ bool CellLattice::generalOverlap(const T& obj,
            overlapsWithList(obj, normalCells) ||
            overlapsWithList(obj, cancerCells);
 }
-
 
 #endif // CELL_LATTICE_H

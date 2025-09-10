@@ -1,5 +1,7 @@
 #include "cell_lattice.h"
 #include <iomanip>
+#include <algorithm> 
+#include <array> 
 
 
 CellLattice::CellLattice(int width_, int height_) : width(width_), height(height_) {
@@ -45,19 +47,6 @@ bool CellLattice::loadObstacles(std::vector<Obstacle>& obstacles, int numObstacl
     inputFile.close();
     return true;
 }
-
-/*
-double CellLattice::calculateDistance(int x1, int y1, int x2, int y2) 
-{
-    int dx = std::abs(x2 - x1);
-    if (dx > WIDTH / 2) dx = WIDTH - dx;
-
-    int dy = std::abs(y2 - y1);
-    if (dy > HEIGHT / 2) dy = HEIGHT - dy;
-
-    return std::hypot(dx, dy); // Distância Euclidiana com contorno periódico
-}  
-*/
 
 // distancia de Manhattan   
 double CellLattice::calculateDistance(int x1, int y1, int x2, int y2) 
@@ -250,4 +239,252 @@ void CellLattice::printGrid() const {
         std::cout << "\n";
     }
     std::cout << "---------------------------\n";
+
+}
+
+int CellLattice:: contarAlvosAoRedor(int x, int y,
+    const std::vector<Cell>& agentes,
+    const std::vector<std::string>& tipos,
+    int sigma)const
+    {
+    int count = 0;
+    for (const auto& a : agentes) 
+    {
+        if (std::find(tipos.begin(), tipos.end(), a.getTipo()) == tipos.end())
+        continue;
+
+        double dist = calculateDistance(x, y, a.getCoordenadaX(), a.getCoordenadaY());
+        if (dist <= sigma + 1e-6)
+        ++count;
+    }
+    return count;
+}
+
+
+void CellLattice:: moverCelulaRuim(Cell& cell,
+    std::vector<Cell>& cT, std::vector<Cell>& cC,
+    std::vector<Obstacle>& obstacles,
+    std::mt19937& rng, bool checkcC, int SR)
+{
+    int x = cell.getCoordenadaX();
+    int y = cell.getCoordenadaY();
+    int newX = x, newY = y;
+
+    const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
+    std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
+    std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
+
+    // 1. Coleta todos os caçadores adjacentes
+    std::vector<std::pair<int, int>> cacadoresAdjacentes;
+
+    for (Direction dir : direcoesEmbaralhadas)
+    {
+        int adjX = x, adjY = y;
+        cell.randonWalk(adjX, adjY, dir);
+        for (const auto& hunter : cT)
+        {
+            if (hunter.getCoordenadaX() == adjX && hunter.getCoordenadaY() == adjY)
+            {
+                cacadoresAdjacentes.emplace_back(adjX, adjY);
+                break;
+            }
+        }
+    }
+
+    // 2. Se houver caçadores adjacentes → escolher aleatoriamente um e fugir para posição livre qualquer
+    if (!cacadoresAdjacentes.empty())
+    {
+        // Não usamos diretamente o caçador escolhido, só sorteamos para satisfazer a regra
+        std::shuffle(cacadoresAdjacentes.begin(), cacadoresAdjacentes.end(), rng);
+        auto [cacadorX, cacadorY] = cacadoresAdjacentes.front();
+
+        // Agora tentamos fugir para uma direção livre
+        std::vector<Direction> direcoesLivres;
+        for (Direction dir : direcoesEmbaralhadas)
+        {
+            int tempX = x, tempY = y;
+            cell.randonWalk(tempX, tempY, dir);
+
+            if (!isOccupied(tempX, tempY, cT, cC, obstacles, checkcC))
+                direcoesLivres.push_back(dir);
+        }
+
+        if (!direcoesLivres.empty())
+        {
+            std::shuffle(direcoesLivres.begin(), direcoesLivres.end(), rng);
+            Direction fuga = direcoesLivres.front();
+            cell.randonWalk(newX, newY, fuga);
+
+            setGridValue(x, y, "L");
+            cell.changePosition(newX, newY);
+            setGridValue(newX, newY, "O");
+        }
+
+        return; // mesmo que fique parado
+    }   
+
+    // 3. Se não há caçador adjacente → estratégia de densidade
+    std::vector<Cell> celulas;
+    celulas.insert(celulas.end(), cT.begin(), cT.end());
+    celulas.insert(celulas.end(), cC.begin(), cC.end());
+
+    int densidadeAtual = contarAlvosAoRedor(x, y, celulas, {"N"}, SR);
+    int menorDensidade = densidadeAtual;
+    std::vector<Direction> melhoresDirecoes;
+
+    for (Direction dir : direcoesEmbaralhadas)
+    {
+        int tempX = x, tempY = y;
+        cell.randonWalk(tempX, tempY, dir);
+        if (isOccupied(tempX, tempY, cT, cC, obstacles, checkcC))
+            continue;
+
+        int densidadeVizinha = contarAlvosAoRedor(tempX, tempY, celulas,  {"N"}, SR);
+        if (densidadeVizinha < menorDensidade)
+        {
+            menorDensidade = densidadeVizinha;
+            melhoresDirecoes.clear();
+            melhoresDirecoes.push_back(dir);
+        }
+        else if (densidadeVizinha == menorDensidade)
+        {
+            melhoresDirecoes.push_back(dir);
+        }
+    }
+
+    if (!melhoresDirecoes.empty())
+    {
+        std::shuffle(melhoresDirecoes.begin(), melhoresDirecoes.end(), rng);
+        Direction melhor = melhoresDirecoes.front();
+        cell.randonWalk(newX, newY, melhor);
+    }
+    else
+    {
+        std::uniform_int_distribution<int> dir(0, 3);
+        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
+    }
+
+    if (!isOccupied(newX, newY, cT, cC, obstacles, checkcC))
+    {
+        setGridValue(x, y, "L");
+        cell.changePosition(newX, newY);
+        setGridValue(newX, newY, "O");
+    }
+}
+
+
+void CellLattice:: moverCelulaBoa(Cell& cell,
+    std::vector<Cell>& cT, std::vector<Cell>& cC,
+    std::vector<Obstacle>& obstacles,
+    std::mt19937& rng, bool checkcC, int SR)
+{
+    int x = cell.getCoordenadaX();
+    int y = cell.getCoordenadaY();
+    int newX = x, newY = y;
+    std::bernoulli_distribution d(CTPROBABILITY);
+    bool movimentoInteligente = d(rng);
+
+    const std::array<Direction, 4> direcoes = {NORTH, EAST, SOUTH, WEST};
+    std::array<Direction, 4> direcoesEmbaralhadas = direcoes;
+    std::shuffle(direcoesEmbaralhadas.begin(), direcoesEmbaralhadas.end(), rng);
+
+    if (movimentoInteligente)
+    {
+        // 1. Verifica se há presa adjacente
+        std::vector<Direction> presasAdjacentes;
+        for (Direction dir : direcoesEmbaralhadas)
+        {
+            int tempX = x, tempY = y;
+            cell.randonWalk(tempX, tempY, dir);
+            for (const auto& presa : cC)
+            {
+                if (presa.getCoordenadaX() == tempX && presa.getCoordenadaY() == tempY)
+                {
+                    presasAdjacentes.push_back(dir);
+                    break;
+                }
+            }
+        }
+
+        // 2. Se houver presa adjacente → captura uma aleatória
+        if (!presasAdjacentes.empty())
+        {
+            std::shuffle(presasAdjacentes.begin(), presasAdjacentes.end(), rng);
+            Direction dir = presasAdjacentes.front();
+            cell.randonWalk(newX, newY, dir);
+
+            // Captura a presa naquela posição
+            for (auto it = cC.begin(); it != cC.end(); )
+            {
+                if (it->getCoordenadaX() == newX && it->getCoordenadaY() == newY)
+                {
+                    setGridValue(it->getCoordenadaX(), it->getCoordenadaY(), "L");    
+                    it = cC.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+
+            setGridValue(x, y, "L");
+            cell.changePosition(newX, newY);
+            setGridValue(newX, newY, "N");
+            return;
+        }
+
+        // 3. Caso não haja presa adjacente → seguir a densidade
+        std::vector<Cell> celulas;
+        celulas.insert(celulas.end(), cT.begin(), cT.end());
+        celulas.insert(celulas.end(), cC.begin(), cC.end());
+
+        int densidadeAtual = contarAlvosAoRedor(x, y, celulas, {"O"}, SR);
+        int maiorDensidade = densidadeAtual;
+        std::vector<Direction> melhoresDirecoes;
+
+        for (Direction dir : direcoesEmbaralhadas)
+        {
+            int tempX = x, tempY = y;
+            cell.randonWalk(tempX, tempY, dir);
+            if (isOccupied(tempX, tempY, cT, cC, obstacles, checkcC))
+                continue;
+
+            int densidadeVizinha = contarAlvosAoRedor(tempX, tempY, celulas,  {"O"}, SR);
+            if (densidadeVizinha > maiorDensidade)
+            {
+                maiorDensidade = densidadeVizinha;
+                melhoresDirecoes.clear();
+                melhoresDirecoes.push_back(dir);
+            }
+            else if (densidadeVizinha == maiorDensidade)
+            {
+                melhoresDirecoes.push_back(dir);
+            }
+        }
+
+        if (!melhoresDirecoes.empty())
+        {
+            std::shuffle(melhoresDirecoes.begin(), melhoresDirecoes.end(), rng);
+            Direction melhor = melhoresDirecoes.front();
+            cell.randonWalk(newX, newY, melhor);
+        }
+        else
+        {
+            std::uniform_int_distribution<int> dir(0, 3);
+            cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
+        }
+    }
+    else
+    {
+        // Movimento totalmente aleatório
+        std::uniform_int_distribution<int> dir(0, 3);
+        cell.randonWalk(newX, newY, static_cast<Direction>(dir(rng)));
+    }
+
+    if (!isOccupied(newX, newY, cT, cC, obstacles, checkcC))
+    {
+        setGridValue(x, y, "L");
+        cell.changePosition(newX, newY);
+        setGridValue(newX, newY, "N");
+    }
 }
