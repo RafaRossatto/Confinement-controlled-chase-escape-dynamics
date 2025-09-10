@@ -15,7 +15,8 @@ obstacles(obstacles_), sr_normal(sr_normal_), sr_cancer(sr_cancer_), seed(seed_)
 fileName = gerarNomeArquivo(numCT, numcC, numPoint, ncNoise_cc, ncNoise_ct, sr_normal, sr_cancer);
 }
 
-void Simulation::runSingle(int run, std::mt19937& rng, std::ofstream& outputFile) 
+// ⚡ MODIFICAÇÃO: Retorna resultados em vez de escrever no arquivo
+SimulationResult Simulation::runSingle(int run, std::mt19937& rng) 
 {
     const int L = lattice.getWidth();
     std::ostringstream oss_nc;
@@ -37,16 +38,14 @@ void Simulation::runSingle(int run, std::mt19937& rng, std::ofstream& outputFile
     // Abrir arquivo de presas inacessíveis
     std::ifstream arquivo(caminhoArquivo);
     if (!arquivo.is_open()) {
-        #pragma omp critical
         logError("Erro ao abrir o arquivo: " + caminhoArquivo);
-        return;
+        return {0.0, 0};
     }
 
     // Colocar objetos na grade
     if (!lattice.placeObjects(point_local, cT_local, cC_local, numPoint, numCT, numcC, rng, sr_normal, sr_cancer, run)) {
-        #pragma omp critical
         logError("Failed to place objects in run " + std::to_string(run));
-        return;
+        return {0.0, 0};
     }
 
     int countInacessiveis = 0;
@@ -64,9 +63,8 @@ void Simulation::runSingle(int run, std::mt19937& rng, std::ofstream& outputFile
     // Arquivo de evolução das presas (local para cada run)
     std::ofstream evoFile(fileName + "_run_" + std::to_string(run) + "_presas_por_passo.csv");
     if (!evoFile.is_open()) {
-        #pragma omp critical
         logError("Erro ao criar evoFile da run " + std::to_string(run));
-        return;
+        return {0.0, 0};
     }
 
     evoFile << "passo,presas_vivas\n";
@@ -123,12 +121,8 @@ void Simulation::runSingle(int run, std::mt19937& rng, std::ofstream& outputFile
         t += 1.0;
     }
 
-    // ⚡⚡⚡ ESCRITA SERIALIZADA - APENAS AQUI ⚡⚡⚡
-    #pragma omp critical
-    {
-        outputFile << run << "," << t << "," << cC_local.size() << "," << rng << "\n";
-        outputFile.flush(); // Garantir escrita imediata
-    }
-
     evoFile.close();
+    
+    // ⚡ MODIFICAÇÃO: Retornar resultados em vez de escrever no arquivo
+    return {t, static_cast<int>(cC_local.size())};
 }

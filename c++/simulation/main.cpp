@@ -12,6 +12,14 @@
 std::random_device rd;
 unsigned int GLOBAL_SEED = rd();
 
+// Estrutura para armazenar resultados de cada run
+struct RunResult {
+    int run;
+    double steps;
+    int escapers;
+    unsigned int seed;
+};
+
 int main() 
 {
     // Configurações básicas
@@ -49,13 +57,8 @@ int main()
 
     logInfo("Iniciando " + std::to_string(count) + " runs");
 
-    // Abrir arquivo de saída
-    std::ofstream outputFile(sim.getFileName());
-    if (!outputFile.is_open()) {
-        logError("Failed to open file: " + sim.getFileName());
-        return 1;
-    }
-    outputFile << "run,steps,escapers,seed\n";
+    // Vetor para armazenar resultados
+    std::vector<RunResult> results(count);
 
     // Executar runs em paralelo
     #pragma omp parallel for schedule(dynamic)
@@ -65,20 +68,43 @@ int main()
                               run + 1000 * numcC + 100000 * numPoint;
         std::mt19937 rng_local(seed_run);
         
+        // Criar cópia local da simulação
         Simulation sim_local = sim;
         
         #pragma omp critical
         logInfo("Thread " + std::to_string(omp_get_thread_num()) + " processando run " + std::to_string(run));
         
-        // Executar run - a escrita serializada está DENTRO do runSingle
-        sim_local.runSingle(run, rng_local, outputFile);
+        // Executar run e coletar resultados
+        double steps = 0.0;
+        int escapers = 0;
+        
+        // ⚡ MODIFICAÇÃO: Chamar método que retorna resultados em vez de escrever no arquivo
+        auto result = sim_local.runSingle(run, rng_local);
         
         #pragma omp critical
-        logInfo("Thread " + std::to_string(omp_get_thread_num()) + " concluiu run " + std::to_string(run));
+        {
+            results[run] = {run, result.steps, result.escapers, seed_run};
+            logInfo("Thread " + std::to_string(omp_get_thread_num()) + " concluiu run " + std::to_string(run));
+        }
     }
     
+    // ⚡ ESCRITA SERIALIZADA - APENAS UMA THREAD
+    std::ofstream outputFile(sim.getFileName());
+    if (!outputFile.is_open()) {
+        logError("Failed to open file: " + sim.getFileName());
+        return 1;
+    }
+    
+    outputFile << "run,steps,escapers,seed\n";
+    for (const auto& result : results) {
+        outputFile << result.run << "," 
+                   << result.steps << "," 
+                   << result.escapers << "," 
+                   << result.seed << "\n";
+    }
     outputFile.close();
-    logInfo("Todas as runs concluídas!");
+    
+    logInfo("Todas as runs concluídas! Resultados salvos em: " + sim.getFileName());
 
     return 0;
 }

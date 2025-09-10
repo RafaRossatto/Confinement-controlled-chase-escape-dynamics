@@ -10,6 +10,12 @@
 #include <random>
 #include <fstream>
 
+// Estrutura para resultados da simulação
+struct SimulationResult {
+    double steps;
+    int escapers;
+};
+
 class Simulation {
 private:
     CellLattice& lattice;
@@ -30,8 +36,8 @@ public:
                const std::vector<Obstacle>& obstacles_, int sr_normal_, int sr_cancer_,
                unsigned int seed_ = 0);
     
-    // Mantém a mesma assinatura - recebe o arquivo para escrita
-    void runSingle(int run, std::mt19937& rng, std::ofstream& outputFile);
+    // ⚡ MODIFICAÇÃO: Retorna resultados em vez de escrever no arquivo
+    SimulationResult runSingle(int run, std::mt19937& rng);
     
     // Getters
     int getNumCT() const { return numCT; }

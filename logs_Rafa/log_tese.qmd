@@ -5,6 +5,7 @@ format: html
 ## 10/09/2025
 
 - Estou mexendo no código, tirei algumas funcoes que faziam o movimento das células para a classe cell laticce, onde é feito a simulacao. Acredito que eu vou colocar o lopp principal ali. 
+- Criei a classe simulation, que deixa mais modularizado o código como um todo.Agora precisa passar as opalavras para ingles e fazer a documentacao.
 
 ## 01/09/2025
 
