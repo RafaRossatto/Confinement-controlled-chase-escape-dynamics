@@ -72,6 +72,7 @@ class CellLattice
                      std::vector<Cell>& cT, std::vector<Cell>& cC,
                      std::vector<Obstacle>& obstacles,
                      std::mt19937& rng, bool checkcC, int SR);
+                
 };
 
 
