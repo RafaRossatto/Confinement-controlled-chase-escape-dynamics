@@ -3,13 +3,13 @@ TARGET = a.out
 
 # Compilador
 CXX = g++
-CXXFLAGS = -O2 -Wall -std=c++17  # <- -fopenmp REMOVIDO
+CXXFLAGS = -O2 -Wall -std=c++17 -fopenmp  # <-- adicionada flag -fopenmp
 
 # Fontes
-SRC = main.cpp cell.cpp cell_lattice.cpp obstacle.cpp config.cpp
+SRC = main.cpp cell.cpp cell_lattice.cpp obstacle.cpp config.cpp simulation.cpp
 
 # Cabeçalhos
-HEADERS = cell.h cell_lattice.h obstacle.h config.h utils.h config.h
+HEADERS = cell.h cell_lattice.h obstacle.h config.h utils.h simulation.cpp
 
 # Objetos
 OBJ = $(SRC:.cpp=.o)

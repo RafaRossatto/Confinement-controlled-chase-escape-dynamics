@@ -1,7 +1,7 @@
 #include "simulation.h"
 #include "utils.h"
 #include <iomanip>
-#include <omp.h>
+#include <fstream>
 
 /**
  * @brief Constructs a new Simulation object
@@ -18,13 +18,76 @@ Simulation::Simulation(CellLattice& lattice, int numHunters, int numPrey, int nu
     m_fileName = generateFileName(m_numHunters, m_numPrey, m_numObstacles, 
                                  m_preyNoise, m_hunterNoise, 
                                  m_hunterSearchRadius, m_preySearchRadius);
+    clearTrajectoryData();
 }
+
+/**
+ * @brief Saves current positions to trajectory data
+ */
+void Simulation::saveCurrentPositions(double time, const std::vector<Cell>& prey, const std::vector<Cell>& hunters) 
+{
+    // Save timestep
+    m_trajectoryData.timesteps.push_back(time);
+    
+    // Save prey positions
+    std::vector<std::pair<int, int>> currentPreyPositions;
+    for (const auto& p : prey) {
+        currentPreyPositions.emplace_back(p.getPositionX(), p.getPositionY());
+    }
+    m_trajectoryData.preyPositions.push_back(currentPreyPositions);
+    
+    // Save hunter positions
+    std::vector<std::pair<int, int>> currentHunterPositions;
+    for (const auto& h : hunters) {
+        currentHunterPositions.emplace_back(h.getPositionX(), h.getPositionY());
+    }
+    m_trajectoryData.hunterPositions.push_back(currentHunterPositions);
+}
+
+/**
+ * @brief Saves trajectory data to TrajPy format files
+ */
+void Simulation::saveTrajectoryData(int run) const 
+{
+    // Save prey trajectories
+    std::ofstream preyFile(m_fileName + "_run_" + std::to_string(run) + "_prey_trajectories.csv");
+    if (preyFile.is_open()) {
+        preyFile << "timestep,cell_id,x,y\n";
+        for (size_t t = 0; t < m_trajectoryData.timesteps.size(); ++t) {
+            for (size_t c = 0; c < m_trajectoryData.preyPositions[t].size(); ++c) {
+                preyFile << m_trajectoryData.timesteps[t] << ","
+                         << c << ","
+                         << m_trajectoryData.preyPositions[t][c].first << ","
+                         << m_trajectoryData.preyPositions[t][c].second << "\n";
+            }
+        }
+        preyFile.close();
+    }
+    
+    // Save hunter trajectories
+    std::ofstream hunterFile(m_fileName + "_run_" + std::to_string(run) + "_hunter_trajectories.csv");
+    if (hunterFile.is_open()) {
+        hunterFile << "timestep,cell_id,x,y\n";
+        for (size_t t = 0; t < m_trajectoryData.timesteps.size(); ++t) {
+            for (size_t c = 0; c < m_trajectoryData.hunterPositions[t].size(); ++c) {
+                hunterFile << m_trajectoryData.timesteps[t] << ","
+                           << c << ","
+                           << m_trajectoryData.hunterPositions[t][c].first << ","
+                           << m_trajectoryData.hunterPositions[t][c].second << "\n";
+            }
+        }
+        hunterFile.close();
+    }
+}
+
 /**
  * @brief Runs a single simulation run
  */
-
- SimulationResult Simulation::runSingle(int run, std::mt19937& rng) 
+SimulationResult Simulation::runSingle(int run, std::mt19937& rng) 
 {
+    // Clear previous trajectory data
+    clearTrajectoryData();
+    
     const int gridSize = m_lattice.getWidth();
     std::ostringstream ossHunters;
     ossHunters << std::setw(2) << std::setfill('0') << m_numHunters;
@@ -69,7 +132,10 @@ Simulation::Simulation(CellLattice& lattice, int numHunters, int numPrey, int nu
     double nextRecordingTime = recordingInterval;
     bool checkPrey;
 
-    // Evolution file for prey count (local to each run)
+    // ⭐⭐ Save initial positions
+    saveCurrentPositions(time, localPrey, localHunters);
+
+    // Evolution file for prey count
     std::ofstream evolutionFile(m_fileName + "_run_" + std::to_string(run) + "_prey_per_step.csv");
     if (!evolutionFile.is_open()) {
         logError("Error creating evolution file for run " + std::to_string(run));
@@ -87,7 +153,7 @@ Simulation::Simulation(CellLattice& lattice, int numHunters, int numPrey, int nu
             break;
         }
 
-        // Process gridSize*gridSize movements (one time step)
+        // Process gridSize*gridSize movements
         for (int i = 0; i < gridSize * gridSize; ++i) {
             int randomX = distX(rng);
             int randomY = distY(rng);
@@ -121,6 +187,8 @@ Simulation::Simulation(CellLattice& lattice, int numHunters, int numPrey, int nu
         // Record state at each interval
         if (time >= nextRecordingTime) {
             evolutionFile << time << "," << localPrey.size() << "\n";
+            // ⭐⭐ Save positions at recording interval
+            saveCurrentPositions(time, localPrey, localHunters);
             nextRecordingTime += recordingInterval;
         }
 
@@ -132,8 +200,13 @@ Simulation::Simulation(CellLattice& lattice, int numHunters, int numPrey, int nu
         time += 1.0;
     }
 
+    // ⭐⭐ Save final positions
+    saveCurrentPositions(time, localPrey, localHunters);
+    
     evolutionFile.close();
     
-    // Return results instead of writing to file
+    // Save trajectory data to files
+    saveTrajectoryData(run);
+    
     return {time, static_cast<int>(localPrey.size())};
 }

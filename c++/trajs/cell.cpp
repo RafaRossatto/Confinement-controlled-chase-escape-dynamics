@@ -3,57 +3,54 @@
 #include <algorithm>
 #include <vector>
 
-// Construtor sem lista de inicialização
-Cell::Cell(const std::string& tipo, int numero, int coordenadaX, int coordenadaY) 
-{
-    m_tipo = tipo;
-    m_numero = numero;
-    m_coordenadaX = coordenadaX;
-    m_coordenadaY = coordenadaY;
-}
+/**
+ * @brief Constructs a new Cell object using initialization list
+ * 
+ * @param type Type of the cell
+ * @param id Unique identifier
+ * @param positionX Initial X coordinate
+ * @param positionY Initial Y coordinate
+ */
+Cell::Cell(const std::string& type, int id, int positionX, int positionY)
+    : m_type(type), m_id(id), m_positionX(positionX), m_positionY(positionY), m_searchRadius(0)
+{}
 
-// Getters
-std::string Cell::getTipo() const 
-{
-    return m_tipo;
-}
 
-int Cell::getNumero() const 
-{
-    return m_numero;
-}
-
-int Cell::getCoordenadaX() const 
-{
-    return m_coordenadaX;
-}
-
-int Cell::getCoordenadaY() const 
-{
-    return m_coordenadaY;
-}
-
-// Método para alterar a posição
+/**
+ * @brief Changes the cell's position with boundary validation
+ * 
+ * @param newX New X coordinate
+ * @param newY New Y coordinate
+ */
 void Cell::changePosition(int newX, int newY) 
 {
     if (newX < 0 || newX >= HEIGHT || newY < 0 || newY >= WIDTH) 
     {
-        logError("CRITICAL ERROR: Attempted to move cell " + std::to_string(m_numero) +
+        logError("CRITICAL ERROR: Attempted to move cell " + std::to_string(m_id) +
          " to an invalid position (" + std::to_string(newX) + "," + std::to_string(newY) + ")\n" +
-         "Current position: (" + std::to_string(m_coordenadaX) + "," + std::to_string(m_coordenadaY) + ")\n" +
+         "Current position: (" + std::to_string(m_positionX) + "," + std::to_string(m_positionY) + ")\n" +
          "Stack trace:");
-        newX = (newX % 100 + 100) % 100; // Força correção
-        newY = (newY % 100 + 100) % 100;
-    std::cin.get();
+        
+        // Force correction using modulo arithmetic
+        newX = (newX % HEIGHT + HEIGHT) % HEIGHT;
+        newY = (newY % WIDTH + WIDTH) % WIDTH;
+        
+        std::cin.get();
     }
-    m_coordenadaX = newX;
-    m_coordenadaY = newY;
+    m_positionX = newX;
+    m_positionY = newY;
 }
 
-
-void Cell::randonWalk(int& x, int& y, Direction move) 
+/**
+ * @brief Performs a random walk movement in the specified direction
+ * 
+ * @param x Reference to X coordinate (will be modified)
+ * @param y Reference to Y coordinate (will be modified)
+ * @param move Direction of movement
+ */
+void Cell::randomWalk(int& x, int& y, Direction move) 
 {
-    int oldX = x, oldY = y; // Keep the original position.
+    int originalX = x, originalY = y; // Store original position
 
     switch (move) {
         case SOUTH:
@@ -65,30 +62,80 @@ void Cell::randonWalk(int& x, int& y, Direction move)
         case EAST:
             x = (x + 1) % WIDTH;
             break;
-        
         case WEST:
             x = (x - 1 + WIDTH) % WIDTH;
             break;
     }
 
-    // Verificação de movimento inválido
+    // Validate movement and correct if necessary
     if (x < 0 || y < 0) 
     {
-        logError("Failed to place the objects in the execution at position: " + std::to_string(oldX) + "," + std::to_string(oldY));
-        logError("With direction: " + std::to_string(move));
-        logError("Trying to move to position: " + std::to_string(x) + "," + std::to_string(y));
+        logError("Failed to move cell from position: " + 
+                 std::to_string(originalX) + "," + std::to_string(originalY));
+        logError("Direction: " + std::to_string(move));
+        logError("Attempted position: " + std::to_string(x) + "," + std::to_string(y));
 
-        x = (x + WIDTH) % WIDTH;  // Corrige imediatamente
+        // Immediate correction using modulo arithmetic
+        x = (x + WIDTH) % WIDTH;
         y = (y + HEIGHT) % HEIGHT;
-        std ::cin.get();
+        
+        std::cin.get();
     }
 }
-void Cell::setSearchRadius(int sr) 
+
+// Getters
+/**
+ * @brief Gets the cell type
+ * @return std::string Type of the cell
+ */
+std::string Cell::getType() const 
 {
-    search_radius = sr;
+    return m_type;
 }
 
+/**
+ * @brief Gets the cell unique identifier
+ * @return int Unique ID
+ */
+int Cell::getId() const 
+{
+    return m_id;
+}
+
+/**
+ * @brief Gets the X coordinate position
+ * @return int X coordinate
+ */
+int Cell::getPositionX() const 
+{
+    return m_positionX;
+}
+
+/**
+ * @brief Gets the Y coordinate position
+ * @return int Y coordinate
+ */
+int Cell::getPositionY() const 
+{
+    return m_positionY;
+}
+
+/**
+ * @brief Gets the current search radius
+ * @return int Search radius value
+ */
 int Cell::getSearchRadius() const 
 {
-    return search_radius;
+    return m_searchRadius;
+}
+
+// Setters
+
+/**
+ * @brief Sets the search radius for the cell
+ * @param searchRadius New search radius value
+ */
+void Cell::setSearchRadius(int searchRadius) 
+{
+    m_searchRadius = searchRadius;
 }

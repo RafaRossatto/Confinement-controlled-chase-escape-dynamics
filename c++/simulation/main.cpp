@@ -9,102 +9,122 @@
 #include <vector>
 #include <omp.h>
 
-std::random_device rd;
-unsigned int GLOBAL_SEED = rd();
+/**
+ * @file main.cpp
+ * @brief Main simulation driver program
+ * 
+ * This program runs multiple simulation runs in parallel and collects
+ * statistical results for analysis.
+ */
 
-// Estrutura para armazenar resultados de cada run
+std::random_device rd;
+unsigned int GLOBAL_SEED = rd(); /**< Global random seed for reproducibility */
+
+/**
+ * @struct RunResult
+ * @brief Stores the results of a single simulation run
+ */
 struct RunResult {
-    int run;
-    double steps;
-    int escapers;
-    unsigned int seed;
+    int run;                /**< Run identifier number */
+    double steps;           /**< Number of steps executed */
+    int remainingPrey;      /**< Number of remaining prey cells */
+    unsigned int seed;      /**< Random seed used for this run */
 };
 
+/**
+ * @brief Main function that drives the simulation
+ * 
+ * @return int Exit status (0 for success)
+ */
 int main() 
 {
-    // Configurações básicas
-    int count = 100;
-    SIZE = 128;
-    WIDTH = SIZE;
-    HEIGHT = SIZE;
-    CAPTUREPROBABILITY = 1.0;
+    // Basic configuration
+    const int NUM_RUNS = 100;      /**< Number of simulation runs to execute */
+    SIZE = 128;                    /**< Grid size (will be square grid) */
+    WIDTH = SIZE;                  /**< Grid width */
+    HEIGHT = SIZE;                 /**< Grid height */
+    //CAPTURE_PROBABILITY = 1.0;     /**< Probability of successful capture */
 
-    // Parâmetros
-    std::vector<int> numcT_values = {1024};
-    std::vector<int> numPoint_values = {8192};
-    std::vector<double> numNoise_ct = {1.00};
-    std::vector<double> numNoise_cc = {1.00};
-    int sr_normal = 2;
-    int sr_cancer = 2;
+    // Simulation parameters
+    std::vector<int> numHuntersValues = {1024};        /**< Number of hunter cells */
+    std::vector<int> numObstaclesValues = {8192};      /**< Number of obstacles */
+    std::vector<double> hunterNoiseValues = {1.00};    /**< Hunter movement noise */
+    std::vector<double> preyNoiseValues = {1.00};      /**< Prey movement noise */
+    const int HUNTER_SEARCH_RADIUS = 2;               /**< Search radius for hunters */
+    const int PREY_SEARCH_RADIUS = 2;                 /**< Search radius for prey */
 
-    // Inicializar
+    // Initialize lattice and obstacles
     CellLattice lattice(WIDTH, HEIGHT);
-    std::vector<Obstacle> point;
+    std::vector<Obstacle> obstacles;
 
-    // Calcular numcC
-    int L = lattice.getWidth();
-    int total_sites = L * L;
-    int numPoint = numPoint_values[0];
-    int numFree = total_sites - numPoint;
-    int numcC = numFree / 4;
-    int numCT = numcT_values[0];
+    // Calculate number of prey cells based on available space
+    const int gridSize = lattice.getWidth();
+    const int totalSites = gridSize * gridSize;
+    const int numObstacles = numObstaclesValues[0];
+    const int numFreeSites = totalSites - numObstacles;
+    const int numPrey = numFreeSites / 4;             /**< Prey occupy 1/4 of free space */
+    const int numHunters = numHuntersValues[0];
 
-    // Criar simulação
-    Simulation sim(lattice, numCT, numcC, numPoint,
-                  numNoise_ct[0], numNoise_cc[0],
-                  point, sr_normal, sr_cancer,
+    // Create simulation instance
+    Simulation sim(lattice, numHunters, numPrey, numObstacles,
+                  hunterNoiseValues[0], preyNoiseValues[0],
+                  obstacles, HUNTER_SEARCH_RADIUS, PREY_SEARCH_RADIUS,
                   GLOBAL_SEED);
 
-    logInfo("Iniciando " + std::to_string(count) + " runs");
+    logInfo("Starting " + std::to_string(NUM_RUNS) + " simulation runs");
 
-    // Vetor para armazenar resultados
-    std::vector<RunResult> results(count);
+    // Vector to store results from all runs
+    std::vector<RunResult> results(NUM_RUNS);
 
-    // Executar runs em paralelo
+    // Execute runs in parallel using OpenMP
     #pragma omp parallel for schedule(dynamic)
-    for (int run = 0; run < count; run++) 
+    for (int run = 0; run < NUM_RUNS; run++) 
     {
-        unsigned int seed_run = GLOBAL_SEED + 10 * sr_cancer + 10 * sr_normal + 
-                              run + 1000 * numcC + 100000 * numPoint;
-        std::mt19937 rng_local(seed_run);
+        // Generate unique seed for each run based on parameters
+        unsigned int runSeed = GLOBAL_SEED + 10 * PREY_SEARCH_RADIUS + 10 * HUNTER_SEARCH_RADIUS + 
+                              run + 1000 * numPrey + 100000 * numObstacles;
+        std::mt19937 rng(runSeed);
         
-        // Criar cópia local da simulação
-        Simulation sim_local = sim;
-        
-        #pragma omp critical
-        logInfo("Thread " + std::to_string(omp_get_thread_num()) + " processando run " + std::to_string(run));
-        
-        // Executar run e coletar resultados
-        double steps = 0.0;
-        int escapers = 0;
-        
-        // ⚡ MODIFICAÇÃO: Chamar método que retorna resultados em vez de escrever no arquivo
-        auto result = sim_local.runSingle(run, rng_local);
+        // Create local copy of simulation for thread safety
+        Simulation localSim = sim;
         
         #pragma omp critical
         {
-            results[run] = {run, result.steps, result.escapers, seed_run};
-            logInfo("Thread " + std::to_string(omp_get_thread_num()) + " concluiu run " + std::to_string(run));
+            logInfo("Thread " + std::to_string(omp_get_thread_num()) + 
+                   " processing run " + std::to_string(run));
+        }
+        
+        // Execute simulation run and collect results
+        SimulationResult result = localSim.runSingle(run, rng);
+        
+        #pragma omp critical
+        {
+            results[run] = {run, result.steps, result.remainingPrey, runSeed};
+            logInfo("Thread " + std::to_string(omp_get_thread_num()) + 
+                   " completed run " + std::to_string(run));
         }
     }
     
-    // ⚡ ESCRITA SERIALIZADA - APENAS UMA THREAD
+    // Serialized output writing - only one thread
     std::ofstream outputFile(sim.getFileName());
     if (!outputFile.is_open()) {
-        logError("Failed to open file: " + sim.getFileName());
+        logError("Failed to open output file: " + sim.getFileName());
         return 1;
     }
     
-    outputFile << "run,steps,escapers,seed\n";
+    // Write CSV header
+    outputFile << "run,steps,remaining_prey,seed\n";
+    
+    // Write results for all runs
     for (const auto& result : results) {
         outputFile << result.run << "," 
                    << result.steps << "," 
-                   << result.escapers << "," 
+                   << result.remainingPrey << "," 
                    << result.seed << "\n";
     }
     outputFile.close();
     
-    logInfo("Todas as runs concluídas! Resultados salvos em: " + sim.getFileName());
+    logInfo("All simulation runs completed! Results saved to: " + sim.getFileName());
 
     return 0;
 }

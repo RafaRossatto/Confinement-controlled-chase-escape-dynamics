@@ -1,64 +1,113 @@
 #pragma once
 #ifndef UTILS_H
 #define UTILS_H
-#include <cmath> // para std::abs
-#include "config.h" // Para usar WIDTH e HEIGHT, se necessário
+
+#include <cmath>        // for std::abs
+#include "config.h"     // For WIDTH and HEIGHT if needed
 #include <iostream>
 #include <fstream>
+#include <string>
 
-inline void logInfo(const std::string& mensagem) 
+/**
+ * @brief Logs an informational message to standard output
+ * 
+ * @param message The message to log
+ */
+inline void logInfo(const std::string& message) 
 {
-    std::cout << "[INFO] " << mensagem << std::endl;
-}
-
-inline void logWarning(const std::string& mensagem) 
-{
-    std::cout << "[WARNING] " << mensagem << std::endl;
-}
-
-inline void logError(const std::string& mensagem) 
-{
-    std::cerr << "[ERROR] " << mensagem << std::endl;
-}
-
-// Função para verificar se um índice é válido
-inline bool indiceValido(int indice, int tamanho)
-{
-    return (indice >= 0) && (indice < tamanho);
+    std::cout << "[INFO] " << message << std::endl;
 }
 
 
+/**
+ * @brief Logs a warning message to standard output
+ * 
+ * @param message The message to log
+ */
+inline void logWarning(const std::string& message) 
+{
+    std::cout << "[WARNING] " << message << std::endl;
+}
+
+/**
+ * @brief Logs an error message to standard error
+ * 
+ * @param message The message to log
+ */
+inline void logError(const std::string& message) 
+{
+    std::cerr << "[ERROR] " << message << std::endl;
+}
+
+/**
+ * @brief Checks if an index is valid for a given size
+ * 
+ * @param index The index to check
+ * @param size The size of the container
+ * @return true if index is valid
+ * @return false if index is invalid
+ */
+inline bool isValidIndex(int index, int size)
+{
+    return (index >= 0) && (index < size);
+}
+
+/**
+ * @brief Opens a file in append mode (creates if doesn't exist)
+ * 
+ * @param fileName The name of the file to open
+ */
 inline void openFile(const std::string& fileName) 
 {
-    // Abre o arquivo em modo de escrita e apêndice
+    // Open file in write and append mode
     std::ofstream file(fileName, std::ios::app);
 
     // Check if the file was opened successfully
     if (!file.is_open()) 
     {
-        logError("Erro ao abrir o arquivo " + fileName);
+        logError("Error opening file " + fileName);
         return;
     }
 
     file.close();
 }
 
+
+/**
+ * @brief Checks if a file exists
+ * 
+ * @param filename The name of the file to check
+ * @return true if file exists
+ * @return false if file doesn't exist
+ */
 inline bool fileExists(const std::string& filename) {
     std::ifstream file(filename);
-    return file.good(); // Verifica se o arquivo pode ser aberto
+    return file.good(); // Checks if the file can be opened
 }
 
-inline std::string gerarNomeArquivo(int numCT, int numcC, int numPoint,
-    double ncNoise_cc, double ncNoise_ct,
-    int sr_normal,int sr_cancer) 
+/**
+ * @brief Generates a standardized filename for simulation output
+ * 
+ * @param numHunters Number of hunter cells
+ * @param numPrey Number of prey cells
+ * @param numObstacles Number of obstacles
+ * @param preyNoise Noise parameter for prey movement
+ * @param hunterNoise Noise parameter for hunter movement
+ * @param hunterSearchRadius Search radius for hunter cells
+ * @param preySearchRadius Search radius for prey cells
+ * @return std::string Generated filename
+ */
+inline std::string generateFileName(int numHunters, int numPrey, int numObstacles,
+                                   double preyNoise, double hunterNoise,
+                                   int hunterSearchRadius, int preySearchRadius) 
 {   
-return "NC_" + std::to_string(numCT) +
-"_NE_" + std::to_string(numcC) +
-"_O_" + std::to_string(numPoint) +
-"_TCC_" + std::to_string(ncNoise_cc) +
-"_SR_" + std::to_string(sr_cancer)+
-"_TCT_" + std::to_string(ncNoise_ct) +
-"_SR_" + std::to_string(sr_normal) + ".dat";
+    return "NC_" + std::to_string(numHunters) +
+           "_NE_" + std::to_string(numPrey) +
+           "_O_" + std::to_string(numObstacles) +
+           "_TCC_" + std::to_string(preyNoise) +
+           "_SR_" + std::to_string(preySearchRadius) +
+           "_TCT_" + std::to_string(hunterNoise) +
+           "_SR_" + std::to_string(hunterSearchRadius) + ".dat";
 }
 
 #endif // UTILS_H

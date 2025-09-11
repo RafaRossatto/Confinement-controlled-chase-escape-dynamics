@@ -9,6 +9,18 @@
 #include <vector>
 #include <random>
 #include <fstream>
+#include <utility> // para std::pair
+
+/**
+ * @struct TrajectoryData
+ * @brief Stores trajectory data for all cells across timesteps
+ */
+struct TrajectoryData 
+{
+    std::vector<double> timesteps;
+    std::vector<std::vector<std::pair<int, int>>> preyPositions;   // [timestep][cell](x,y)
+    std::vector<std::vector<std::pair<int, int>>> hunterPositions; // [timestep][cell](x,y)
+};
 
 /**
  * @struct SimulationResult
@@ -29,7 +41,7 @@ struct SimulationResult
  */
 class Simulation 
 {
-    private:
+private:
     CellLattice& m_lattice;          /**< Reference to the cell lattice environment */
     int m_numHunters;                /**< Number of hunter (normal) cells */
     int m_numPrey;                   /**< Number of prey (cancer) cells */
@@ -41,8 +53,17 @@ class Simulation
     int m_hunterSearchRadius;        /**< Search radius for hunter cells */
     int m_preySearchRadius;          /**< Search radius for prey cells */
     unsigned int m_seed;             /**< Random seed for reproducibility */
+    TrajectoryData m_trajectoryData; /**< Trajectory data storage */
 
-    public:
+    /**
+     * @brief Saves current positions to trajectory data
+     * @param time Current simulation time
+     * @param prey Vector of prey cells
+     * @param hunters Vector of hunter cells
+     */
+    void saveCurrentPositions(double time, const std::vector<Cell>& prey, const std::vector<Cell>& hunters);
+
+public:
     /**
      * @brief Constructs a new Simulation object
      * 
@@ -61,6 +82,7 @@ class Simulation
                double hunterNoise, double preyNoise, 
                const std::vector<Obstacle>& obstacles, int hunterSearchRadius, int preySearchRadius,
                unsigned int seed = 0);
+    
     /**
      * @brief Runs a single simulation run
      * 
@@ -71,35 +93,32 @@ class Simulation
     SimulationResult runSingle(int run, std::mt19937& rng);
     
     // Getters
-    /**
-     * @brief Gets the number of hunter cells
-     * @return int Number of hunters
-     */
     int getNumHunters() const { return m_numHunters; }
-
-        /**
-     * @brief Gets the number of prey cells
-     * @return int Number of prey
-     */
     int getNumPrey() const { return m_numPrey; }
-    
-    /**
-     * @brief Gets the number of obstacles
-     * @return int Number of obstacles
-     */
     int getNumObstacles() const { return m_numObstacles; }
-
-    /**
-     * @brief Gets the output filename
-     * @return std::string Filename
-     */
     std::string getFileName() const { return m_fileName; }
+    unsigned int getSeed() const { return m_seed; }
     
     /**
-     * @brief Gets the random seed
-     * @return unsigned int Seed value
+     * @brief Gets the trajectory data
+     * @return const TrajectoryData& Reference to trajectory data
      */
-    unsigned int getSeed() const { return m_seed; }
+    const TrajectoryData& getTrajectoryData() const { return m_trajectoryData; }
+    
+    /**
+     * @brief Clears the trajectory data
+     */
+    void clearTrajectoryData() { 
+        m_trajectoryData.timesteps.clear();
+        m_trajectoryData.preyPositions.clear();
+        m_trajectoryData.hunterPositions.clear();
+    }
+    
+    /**
+     * @brief Saves trajectory data to TrajPy format files
+     * @param run Run identifier number
+     */
+    void saveTrajectoryData(int run) const;
 };
 
 #endif // SIMULATION_H
