@@ -6,8 +6,8 @@ from matplotlib.colors import TwoSlopeNorm
 import numpy as np
 
 # ========= escolha do cenário (um por vez) =========
-NC_TAG    = "Nc=Np*0.5"          # "Nc=Np", "Nc=Np*0.8", "Nc=Np*0.5"
-LABEL_TEX = r"$N^{C}_{0}=N^{E}_{0}*0.5$"
+NC_TAG    = "Nc=Np"          # "Nc=Np", "Nc=Np*0.8", "Nc=Np*0.5"
+LABEL_TEX = r"$N^{C}_{0}=N^{E}_{0}$"
 # ===================================================
 
 # Caminho base
@@ -19,6 +19,9 @@ arquivos = sorted(base.glob(f"params_por_run_EXPbeta_{NC_TAG}_s_obs_*.csv"))
 dados = []
 L = 128
 area = L**2
+BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+OUT_DIR = BASE_ROOT / "resultados_modelos" / "beta_x_tau"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 for arq in arquivos:
     m = re.search(r"s_obs_(\d+)", arq.name)
@@ -87,5 +90,7 @@ cbar.set_ticklabels([f"{vmin:.2f}", f"{VCENTER:.2f}", f"{vmax:.2f}"])
 
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig(f"tau_vs_beta_{NC_TAG}.pdf", dpi=300)
+#plt.savefig(f"tau_vs_beta_{NC_TAG}.pdf", dpi=300)
+fig_pdf = OUT_DIR / f"tau_vs_beta_{NC_TAG}.pdf"
+plt.savefig(fig_pdf, bbox_inches="tight")
 plt.show()

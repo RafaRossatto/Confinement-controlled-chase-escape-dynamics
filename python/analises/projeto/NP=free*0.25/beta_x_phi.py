@@ -25,10 +25,15 @@ plt.rcParams.update({
     "legend.fontsize": 16
 })
 
+# Saídas
+BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+OUT_DIR = BASE_ROOT / "resultados_modelos" / "beta_x_phi"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
 # ---------------------- parâmetros ----------------------
 class Config:
     OBS_LIST = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
-                "obs_8192", "obs_9830", "obs_11468", "obs_13107", "obs_14745"]
+                "obs_8192", "obs_9830", "obs_11468", "obs_13107"]
     
     BASES = [
         (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
@@ -246,8 +251,10 @@ def main():
     put_phi60_first_in_legend(ax)
 
     plt.tight_layout()
-    plt.savefig("beta_vs_phi_boxplot_sep.pdf", dpi=200, bbox_inches='tight')
     logger.info("Figura salva: beta_vs_phi.pdf")
+
+    fig_pdf = OUT_DIR / "beta_vs_phi_boxplot_sep.pdf"
+    plt.savefig(fig_pdf, bbox_inches="tight")
     
     plt.show()
     logger.info("Análise concluída com sucesso!")

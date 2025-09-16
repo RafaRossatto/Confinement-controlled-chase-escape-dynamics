@@ -27,6 +27,9 @@ area = L**2
 BASE_RES = Path.home() / "Dados_Doc" / "Np=free*0.25" / "resultados_modelos"
 MODEL_TAG = "EXPbeta"
 PHI_CRIT_OBST = 0.60
+BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+OUT_DIR = BASE_ROOT / "resultados_modelos" / "tau_x_phi"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 cmap = plt.get_cmap("flag")
 
@@ -152,4 +155,6 @@ new_handles, new_labels = zip(*(linha60 + outros))
 plt.legend(new_handles, new_labels)
 plt.tight_layout()
 plt.savefig("tau_vs_phi.pdf", dpi=200)
+fig_pdf = OUT_DIR / "tau_vs_phi.pdf"
+plt.savefig(fig_pdf, bbox_inches="tight")
 plt.show()

@@ -47,26 +47,26 @@ def fit_expbeta(
 
     Retorna (params_tuple=(A,tau,beta,C), t0, C).
     """
-    df_all = pd.read_csv(path, usecols=["passo", "presas_vivas"]).sort_values("passo")
+    df_all = pd.read_csv(path, usecols=["step", "living_prey"]).sort_values("step")
 
     if C is None:
-        C = float(df_all["presas_vivas"].iloc[-1])
+        C = float(df_all["living_prey"].iloc[-1])
 
     # N0: número inicial de presas (no menor "passo" do CSV, tipicamente t=0)
-    N0 = float(df_all["presas_vivas"].iloc[0])
+    N0 = float(df_all["living_prey"].iloc[0])
     A_fix = max(N0 - C, 1e-9) if fix_A else None
 
     # usa só >0 para ajuste; aplica corte no tempo, se pedido
-    m_pos = df_all["presas_vivas"] > 0
+    m_pos = df_all["living_prey"] > 0
     if max_step_fit is not None:
-        m_pos &= df_all["passo"] <= float(max_step_fit)
+        m_pos &= df_all["step"] <= float(max_step_fit)
     df_pos = df_all[m_pos]
 
-    x = df_pos["passo"].to_numpy(float)
-    y = df_pos["presas_vivas"].to_numpy(float)
+    x = df_pos["step"].to_numpy(float)
+    y = df_pos["living_prey"].to_numpy(float)
 
     # referência temporal
-    t0 = float(df_all["passo"].min()) if x.size == 0 else float(x.min())
+    t0 = float(df_all["step"].min()) if x.size == 0 else float(x.min())
 
     # poucos pontos → valores seguros/degradação
     if x.size < 3:
@@ -123,9 +123,9 @@ def predict_full_on_csv_expbeta(
     path: Path, params, t0: float
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Prediz em TODOS os passos do CSV (incluindo zeros) para o modelo exp^beta."""
-    df_ref = pd.read_csv(path, usecols=["passo", "presas_vivas"]).sort_values("passo")
-    t_full = df_ref["passo"].to_numpy(float)
-    y_true = df_ref["presas_vivas"].to_numpy(float)
+    df_ref = pd.read_csv(path, usecols=["step", "living_prey"]).sort_values("step")
+    t_full = df_ref["step"].to_numpy(float)
+    y_true = df_ref["living_prey"].to_numpy(float)
     z_full = np.maximum(t_full - t0, 0.0)
 
     A, tau, beta, C = params
@@ -158,9 +158,7 @@ def metrics(y_true: np.ndarray, y_pred: np.ndarray, k_params: int):
 # ============================
 
 def collect_runs(scen_dir: Path) -> List[Path]:
-    return sorted(
-        [p for p in scen_dir.rglob("*_run_*_presas_por_passo.csv") if p.is_file()]
-    )
+    return sorted([p for p in scen_dir.rglob("*_run_*_prey_per_step.csv") if p.is_file()])
 
 # ============================
 # Pipeline
@@ -220,15 +218,15 @@ def analisar_todos(
     for path in arquivos:
         try:
             df_ref = (
-                pd.read_csv(path, usecols=["passo", "presas_vivas"])\
-                  .sort_values("passo")
+                pd.read_csv(path, usecols=["step", "living_prey"])\
+                  .sort_values("step")
             )
             # guarda série (>0) para média±std (sem corte; apenas >0)
             series_list.append(
-                df_ref[df_ref["presas_vivas"] > 0].set_index("passo")["presas_vivas"]
+                df_ref[df_ref["living_prey"] > 0].set_index("step")["living_prey"]
             )
 
-            C_run = float(df_ref["presas_vivas"].iloc[-1])
+            C_run = float(df_ref["living_prey"].iloc[-1])
 
             # --- EXP^BETA (KWW) --- (com corte opcional no *fit*)
             params_ep, t0_ep, _ = fit_expbeta(
@@ -279,7 +277,7 @@ def analisar_todos(
             if salvar_series_ajuste:
                 df_out = pd.DataFrame(
                     {
-                        "passo": t_full,
+                        "step": t_full,
                         "dado": y_true,
                         "y_expbeta": y_pred_ep,
                     }
@@ -487,8 +485,8 @@ def analisar_todos(
 
 if __name__ == "__main__":
     base = Path.home() / "Dados_Doc/Np=free*0.25"
-    SCENARIO = "Nc=Np"    # ex.: "Nc=Np" ou "Nc=Np*0.5"
-    n_obs = 0 # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
+    SCENARIO = "Nc=Np*0.5"    # ex.: "Nc=Np" ou "Nc=Np*0.5"
+    n_obs = 13107 # 0, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107, 14745
 
     _ = analisar_todos(
         base=base,

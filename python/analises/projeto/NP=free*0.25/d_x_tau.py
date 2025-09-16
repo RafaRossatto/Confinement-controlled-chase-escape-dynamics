@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import TwoSlopeNorm
 
 # ========= escolha do cenário (um por vez) =========
-NC_TAG    = "Nc=Np"          # "Nc=Np", "Nc=Np*0.8", "Nc=Np*0.5"
-LABEL_TEX = r"$N^{C}_{0}=N^{E}_{0}$"
+NC_TAG    = "Nc=Np*0.5"          # "Nc=Np", "Nc=Np*0.8", "Nc=Np*0.5"
+LABEL_TEX = r"$N^{C}_{0}=N^{E}_{0}*0.5$"
 # ===================================================
 
 RES_DIR = Path.cwd()         # onde estão os CSVs gerados antes

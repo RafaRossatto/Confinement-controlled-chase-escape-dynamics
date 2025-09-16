@@ -7,63 +7,130 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 from matplotlib import colormaps
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import logging
+from typing import List, Tuple, Dict, Optional
+from functools import lru_cache
 
+# ---------------------- Configuração de Logging ----------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # ---------------------- Parâmetros principais ----------------------
-L = 128
-AREA = L**2
-BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+class Config:
+    L = 128
+    AREA = L**2
+    BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+    
+    BASES = [
+        (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
+        (r"$N^{C}_{0}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
+        (r"$N^{C}_{0}=N^{E}_{0}$", "Nc=Np"),
+    ]
+    
+    PLOT_PARAMS = {
+        'cmap_name': "flag",
+        'phi_separators_start': 0.05,
+        'phi_separators_step': 0.10,
+        'phi_separators_max': 0.90,
+        'phi_line_special': 0.60,
+        'boxplot_width': 0.22,
+        'offset_delta': 0.25
+    }
+    
+    FILTRO_STEPS = "todos"  # "todos" ou "apenas_extintos"
+    
+    # Configuração da legenda
+    LEGEND_FRAME = True  # Com quadro na legenda
+    LEGEND_LOCATION = 'upper left'  # Posição da legenda
+    
+    # Escala logarítmica apenas no gráfico principal
+    LOG_SCALE = True
+    Y_LIM_LOG = (1, 1250)  # Começando em 1 na escala log
+    X_LIM = (-0.5, 8.5)  # Começando em 1 na escala log
+    # Configuração do inset
+    INSET_Y_RANGE = (1000, 1200)  # Faixa Y para o inset
+    INSET_PHI_RANGE = (0.65, 0.8)  # Faixa φ para o inset
 
-bases = [
-    (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
-    (r"$N^{C}_{0}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
-    (r"$N^{C}_{0}=N^{E}_{0}$",      "Nc=Np"),
-]
-
-# saída
-OUT_DIR = BASE_ROOT / "resultados_modelos" / "zeros_escapers"
+config = Config()
+OUT_DIR = config.BASE_ROOT / "resultados_modelos" / "zeros_escapers"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# plot
-CMAP_NAME = "flag"     # paleta
-PHI_SEPARATORS_START = 0.05
-PHI_SEPARATORS_STEP  = 0.10
-PHI_SEPARATORS_MAX   = 0.90   # NÃO desenhamos em 0.90
-PHI_LINE_SPECIAL     = 0.60   # linha especial
-
-# Filtro de runs: "todos" ou "apenas_extintos" (escapers==0)
-FILTRO_STEPS = "todos"
-
-# ---------------------- Utilitários ----------------------
-def ler_dat(fp: Path) -> pd.DataFrame:
-    """Lê .dat tolerante a delimitadores e cabeçalhos."""
+# ---------------------- Utilitários Melhorados ----------------------
+@lru_cache(maxsize=32)
+def ler_csv(fp: Path) -> pd.DataFrame:
+    """Lê simulation_results.csv tolerante a delimitadores e cabeçalhos."""
     try:
-        df = pd.read_csv(fp, sep=None, engine="python", comment="#")
-        ok = {"run", "steps", "escapers", "seed"}.issubset(df.columns)
-        if not ok:
-            raise ValueError("Cabeçalho inesperado")
-    except Exception:
-        df = pd.read_csv(
-            fp, delim_whitespace=True, header=None,
-            names=["run","steps","escapers","seed"], comment="#"
-        )
-    df["steps"] = pd.to_numeric(df["steps"], errors="coerce")
-    df["escapers"] = pd.to_numeric(df["escapers"], errors="coerce")
-    df["run"] = pd.to_numeric(df["run"], errors="coerce")
-    return df.dropna(subset=["steps","escapers","run"])
+        # Tentar diferentes separadores para CSV
+        for sep in [',', ';', '\t', ' ']:
+            try:
+                df = pd.read_csv(fp, sep=sep, engine='python', comment='#')
+                if {'run', 'steps', 'remaining_prey', 'seed'}.issubset(df.columns):
+                    logger.info(f"Arquivo {fp.name} lido com separador: {repr(sep)}")
+                    break
+            except Exception as e:
+                continue
+        else:
+            # Fallback para leitura padrão do pandas
+            logger.warning(f"Usando fallback para {fp.name}")
+            df = pd.read_csv(fp)
+        
+        # Verificar se as colunas necessárias existem
+        required_cols = ['run', 'steps', 'remaining_prey']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            logger.warning(f"Colunas ausentes em {fp.name}: {missing_cols}")
+            return pd.DataFrame()
+        
+        # Conversão robusta de tipos
+        numeric_cols = ['run', 'steps', 'remaining_prey']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        df = df.dropna(subset=numeric_cols)
+        
+        if df.empty:
+            logger.warning(f"Arquivo {fp.name} vazio após limpeza")
+        
+        return df
+        
+    except Exception as e:
+        logger.error(f"Erro ao ler {fp}: {e}")
+        return pd.DataFrame()
 
-def extrai(padrao: str, texto: str, default=None, cast=int):
-    m = re.search(padrao, texto)
-    return cast(m.group(1)) if m else default
+def parse_directory_parameters(dir_path: Path) -> Dict[str, int]:
+    """Extrai parâmetros do nome do diretório de forma robusta"""
+    dir_name = dir_path.name
+    
+    patterns = {
+        'O': r"s_obs_(\d+)$",
+        'NC': r"NC_(\d+)",
+        'NE': r"NE_(\d+)",
+        'TCC': r"TCC_(\d+)",
+        'SR': r"SR_(\d+)",
+        'TCT': r"TCT_(\d+)"
+    }
+    
+    params = {}
+    for key, pattern in patterns.items():
+        match = re.search(pattern, dir_name)
+        if match:
+            try:
+                params[key] = int(match.group(1))
+            except ValueError:
+                logger.warning(f"Valor inválido para {key} em {dir_name}")
+    
+    return params
 
-def symmetric_offsets(n_series: int, delta: float = 0.25):
-    """
-    Retorna offsets simétricos:
-      n=3 -> [-d, 0, +d]
-      n=2 -> [-d/2, +d/2]
-      n=4 -> [-1.5d,-0.5d,+0.5d,+1.5d]
-    """
+def symmetric_offsets(n_series: int, delta: float = 0.25) -> np.ndarray:
+    """Retorna offsets simétricos para boxplots."""
     idx = np.arange(n_series)
     if n_series % 2 == 1:
         center = n_series // 2
@@ -71,252 +138,311 @@ def symmetric_offsets(n_series: int, delta: float = 0.25):
     else:
         return (idx - (n_series - 1)/2) * delta
 
-def add_phi_separators_and_phi60(ax, phi_sorted, tick_positions):
-    """Linhas verticais nos separadores (0.05, 0.15, ...) e linha especial em 0.60."""
-    phi_max = max(phi_sorted) if len(phi_sorted) > 0 else 1.0
-    for phi_sep in np.arange(PHI_SEPARATORS_START, min(PHI_SEPARATORS_MAX, phi_max)+1e-12, PHI_SEPARATORS_STEP):
-        if np.isclose(phi_sep, PHI_SEPARATORS_MAX):
-            continue
-        x_sep = np.interp(phi_sep, phi_sorted, tick_positions)
-        ax.axvline(x=x_sep, color="gray", linestyle="-", alpha=0.5, linewidth=1)
-    # linha especial em 0.60
-    x_phi60 = np.interp(PHI_LINE_SPECIAL, phi_sorted, tick_positions)
-    ax.axvline(x=x_phi60, color="black", linestyle="--", linewidth=1.5, label=rf"$\phi = {PHI_LINE_SPECIAL:.2f}$")
-
-def put_phi60_first_in_legend(ax, frameon=False):
-    handles, labels = ax.get_legend_handles_labels()
-    if not handles:
-        return
-    linha60, outros = [], []
-    for h, l in zip(handles, labels):
-        if rf"$\phi = {PHI_LINE_SPECIAL:.2f}$" in l:
-            linha60.append((h, l))
-        else:
-            outros.append((h, l))
-    new = linha60 + outros if linha60 else outros
-    if new:
-        new_handles, new_labels = zip(*new)
-        ax.legend(new_handles, new_labels, frameon=frameon)
-
-# ---------------------- Coleta de dados por run (para boxplot) ----------------------
-def coletar_steps_por_run(base_root: Path, label_tex: str):
-    """
-    Percorre s_obs_* em base_root e retorna uma lista de tuplas:
-      (phi, n_obs, steps_values_array)
-    onde steps_values_array contém os 'steps' dos runs (filtrados conforme FILTRO_STEPS).
-    """
+# ---------------------- Funções de Processamento ----------------------
+def coletar_steps_por_run(base_root: Path, label_tex: str) -> List[Tuple[float, int, np.ndarray]]:
+    """Coleta dados de steps por run."""
     resultados = []
+    
     if not base_root.exists():
-        print(f"[WARN] Raiz não encontrada: {base_root}")
+        logger.warning(f"Raiz não encontrada: {base_root}")
         return resultados
 
     subdirs = [d for d in base_root.iterdir() if d.is_dir() and d.name.startswith("s_obs_")]
+    
     if not subdirs:
-        print(f"[WARN] Sem subpastas s_obs_* em {base_root}")
+        logger.warning(f"Sem subpastas s_obs_* em {base_root}")
         return resultados
 
     for sdir in sorted(subdirs):
-        # arquivo preferido; fallback p/ qualquer .dat
-        cand = list(sdir.glob("NC_*_NE_*_O_*_TCC_*_SR_*_TCT_*_SR_*.dat"))
-        if not cand:
-            cand = list(sdir.glob("*.dat"))
-        if not cand:
-            print(f"[WARN] Sem .dat em {sdir}")
+        # Buscar especificamente por simulation_results.csv
+        csv_file = sdir / "simulation_results.csv"
+        
+        if not csv_file.exists():
+            logger.warning(f"Arquivo simulation_results.csv não encontrado em {sdir}")
             continue
-        fp = sorted(cand)[0]
 
         try:
-            df = ler_dat(fp)
+            df = ler_csv(csv_file)
+            if df.empty:
+                continue
+                
+            # Aplicar filtro
+            if config.FILTRO_STEPS == "apenas_extintos":
+                df = df[df["remaining_prey"] == 0]
+            elif config.FILTRO_STEPS != "todos":
+                raise ValueError("FILTRO_STEPS deve ser 'todos' ou 'apenas_extintos'")
+
+            if df.empty:
+                continue
+
+            # Extrair parâmetros do nome do diretório
+            params = parse_directory_parameters(sdir)
+            O = params.get('O')
+            
+            if O is None:
+                logger.warning(f"Não consegui obter O do diretório {sdir.name}")
+                continue
+                    
+            n_obs = int(O)
+            phi = n_obs / float(config.AREA)
+
+            steps_vals = df["steps"].dropna().to_numpy()
+            
+            if len(steps_vals) > 0:
+                resultados.append((phi, n_obs, steps_vals))
+                logger.info(f"Processado: phi={phi:.3f}, n_obs={n_obs}, runs={len(steps_vals)}")
+
         except Exception as e:
-            print(f"[WARN] Falha lendo {fp.name}: {e}")
+            logger.error(f"Erro processando {csv_file}: {e}")
             continue
-
-        # filtro
-        if FILTRO_STEPS == "apenas_extintos":
-            df = df[df["escapers"] == 0]
-        elif FILTRO_STEPS == "todos":
-            pass
-        else:
-            raise ValueError("FILTRO_STEPS deve ser 'todos' ou 'apenas_extintos'.")
-
-        if df.empty:
-            continue
-
-        # obter O (número de obstáculos) e phi
-        O = extrai(r"_O_(\d+)_", fp.name, default=extrai(r"s_obs_(\d+)$", sdir.name, default=None))
-        if O is None:
-            print(f"[WARN] Não consegui obter O em {fp.name}; pulando…")
-            continue
-        n_obs = int(O)
-        phi = n_obs / float(AREA)
-
-        steps_vals = df["steps"].dropna().to_numpy()
-        if len(steps_vals) == 0:
-            continue
-
-        resultados.append((phi, n_obs, steps_vals))
 
     return resultados
 
-# ---------------------- Montagem dos grupos para boxplot ----------------------
-cmap = colormaps.get_cmap(CMAP_NAME)
-OFFSETS = symmetric_offsets(len(bases), delta=0.25)
+def add_phi_separators_and_phi60(ax, phi_sorted, tick_positions):
+    """Adiciona linhas verticais nos separadores de phi."""
+    phi_max = max(phi_sorted) if phi_sorted else 1.0
+    
+    for phi_sep in np.arange(config.PLOT_PARAMS['phi_separators_start'], 
+                           min(config.PLOT_PARAMS['phi_separators_max'], phi_max) + 1e-12, 
+                           config.PLOT_PARAMS['phi_separators_step']):
+        if np.isclose(phi_sep, config.PLOT_PARAMS['phi_separators_max']):
+            continue
+        x_sep = np.interp(phi_sep, phi_sorted, tick_positions)
+        ax.axvline(x=x_sep, color="gray", linestyle="-", alpha=0.5, linewidth=1)
+    
+    # Linha especial
+    if config.PLOT_PARAMS['phi_line_special'] <= phi_max:
+        x_phi60 = np.interp(config.PLOT_PARAMS['phi_line_special'], phi_sorted, tick_positions)
+        ax.axvline(x=x_phi60, color="black", linestyle="--", linewidth=1.5, 
+                  label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
 
-# Vamos coletar por cenário
-dados_por_cenario = []
-rows_all = []  # CSV combinado com todos os runs (útil depois)
+def put_phi60_first_in_legend(ax):
+    """Reorganiza a legenda para colocar phi=0.60 primeiro com quadro."""
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return
+    
+    linha60, outros = [], []
+    special_label = rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$"
+    
+    for h, l in zip(handles, labels):
+        if special_label in l:
+            linha60.append((h, l))
+        else:
+            outros.append((h, l))
+    
+    new = linha60 + outros if linha60 else outros
+    if new:
+        new_handles, new_labels = zip(*new)
+        # LEGENDA COM QUADRO - configurações melhoradas
+        ax.legend(new_handles, new_labels, 
+                 frameon=config.LEGEND_FRAME,
+                 loc=config.LEGEND_LOCATION,
+                 fancybox=True,          # Bordas arredondadas
+                 shadow=False,            # Sombra
+                 framealpha=0.7,         # Transparência do fundo
+                 edgecolor='grey',      # Cor da borda
+                 facecolor='white',      # Cor de fundo
+                 fontsize=10)            # Tamanho da fonte
 
-for base_idx, (label_tex, base_dirname) in enumerate(bases):
-    root_path = BASE_ROOT / base_dirname
-    triplets = coletar_steps_por_run(root_path, label_tex)
-    if not triplets:
-        continue
+def create_inset_zoom(ax, phi_labels, dados_por_cenario, offsets, phi_range, y_range):
+    """Cria inset de zoom para uma região específica."""
+    try:
+        ax_inset = inset_axes(ax, width="25%", height="25%", loc='upper right')
+        
+        cmap = colormaps.get_cmap(config.PLOT_PARAMS['cmap_name'])
+        tick_positions = np.arange(len(phi_labels))
+        
+        # Coletar dados para a faixa de φ especificada
+        for base_idx, label_tex, triplets in dados_por_cenario:
+            groups = []
+            pos_idx = []
+            
+            for phi, _n_obs, arr in triplets:
+                if phi_range[0] <= phi <= phi_range[1]:
+                    idx = phi_labels.index(phi)
+                    pos_idx.append(idx)
+                    groups.append(arr)
+            
+            if not groups:
+                continue
+                
+            pos_idx, groups = zip(*sorted(zip(pos_idx, groups)))
+            positions = np.array(pos_idx, dtype=float) + offsets[base_idx]
+            
+            # Boxplot no inset
+            ax_inset.boxplot(
+                groups,
+                positions=positions,
+                widths=config.PLOT_PARAMS['boxplot_width'],
+                patch_artist=True,
+                boxprops=dict(facecolor=cmap(base_idx), alpha=0.5),
+                medianprops=dict(color="black"),
+                whiskerprops=dict(color=cmap(base_idx)),
+                capprops=dict(color=cmap(base_idx)),
+                flierprops=dict(marker="o", markersize=3, alpha=0.4,
+                              markerfacecolor=cmap(base_idx), markeredgecolor="none")
+            )
+        
+        # Configurar eixo do inset - ESCALA NORMAL
+        phi_sorted = sorted(phi_labels)
+        phi_in_range = [phi for phi in phi_sorted if phi_range[0] <= phi <= phi_range[1]]
+        
+        if phi_in_range:
+            # Encontrar posições dos ticks
+            tick_positions_inset = []
+            tick_labels_inset = []
+            for phi in phi_in_range:
+                idx = phi_sorted.index(phi)
+                tick_positions_inset.append(idx)
+                tick_labels_inset.append(f"{phi:.1f}")
+            
+            ax_inset.set_xticks(tick_positions_inset)
+            ax_inset.set_xticklabels(tick_labels_inset, rotation=0, fontsize=8)
+        
+        # Configurar limites do inset
+        ax_inset.set_xlim(
+            np.interp(phi_range[0], phi_sorted, tick_positions) - 0.5,
+            np.interp(phi_range[1], phi_sorted, tick_positions) + 0.5
+        )
+        ax_inset.set_ylim(y_range[0], y_range[1])
+        
+        ax_inset.set_ylabel('Passos', fontsize=9)
+        ax_inset.set_xlabel(r'$\phi$', fontsize=9)
+        ax_inset.grid(True, alpha=0.3)
+        ax_inset.tick_params(labelsize=8)
+        
+        return ax_inset
+        
+    except Exception as e:
+        logger.warning(f"Erro ao criar inset: {e}")
+        return None
 
-    # salvar runs individuais no CSV combinado
-    for phi, n_obs, arr in triplets:
-        for v in arr:
-            rows_all.append({
-                "cenario_label": label_tex,
-                "cenario_tag": base_dirname,
-                "phi": phi,
-                "num_obs": n_obs,
-                "steps_run": float(v),
-            })
-
-    dados_por_cenario.append((base_idx, label_tex, triplets))
-
-# salvar CSV combinado
-if rows_all:
-    filtro_tag = "ALL" if FILTRO_STEPS == "todos" else "EXTINTOS"
-    out_runs = OUT_DIR / f"steps_boxplot_runs_{filtro_tag}__ALL.csv"
-    pd.DataFrame(rows_all).sort_values(["cenario_tag","phi"]).to_csv(out_runs, index=False)
-    print(f"[OK] CSV com runs: {out_runs}")
-else:
-    raise SystemExit("[!] Nenhum dado encontrado para boxplot.")
-
-# ---------------------- Construir eixo categórico (φ -> índice) ----------------------
-# reunir todos os φ usados para ter um eixo comum
-phi_labels = sorted({phi for _, _, trips in dados_por_cenario for (phi, _n, _arr) in trips})
-tick_positions = np.arange(len(phi_labels))
-
-# ---------------------- Plot dos boxplots ----------------------
-plt.figure(figsize=(12, 6), dpi=150)
-ax = plt.gca()
-
-for base_idx, label_tex, triplets in dados_por_cenario:
-    # ordenar os grupos por índice categórico
-    groups = []
-    pos_idx = []
-    for phi, _n_obs, arr in triplets:
-        idx = phi_labels.index(phi)
-        pos_idx.append(idx)
-        groups.append(arr)
-
-    # ordenar por idx
-    pos_idx, groups = zip(*sorted(zip(pos_idx, groups)))
-    positions = np.array(pos_idx, dtype=float) + OFFSETS[base_idx]
-
-    # boxplot
-    plt.boxplot(
-        groups,
-        positions=positions,
-        widths=0.22,
-        patch_artist=True,
-        boxprops=dict(facecolor=cmap(base_idx), alpha=0.5),
-        medianprops=dict(color="black"),
-        whiskerprops=dict(color=cmap(base_idx)),
-        capprops=dict(color=cmap(base_idx)),
-        flierprops=dict(marker="o", markersize=3, alpha=0.4,
-                        markerfacecolor=cmap(base_idx), markeredgecolor="none")
-    )
-    # handle para legenda
-    plt.plot([], [], color=cmap(base_idx), label=label_tex)
-
-
-
-# ---------------------- Decoração ----------------------
-# separadores (0.05, 0.15, ...) e linha 0.60
-add_phi_separators_and_phi60(ax, phi_labels, tick_positions)
-
-# eixo x com rótulos reais de φ
-plt.xticks(tick_positions, [f"{phi:.3f}" for phi in phi_labels], rotation=45)
-plt.xlabel(r"$\phi$")
-plt.ylabel("Passos por run até a captura (distribuição)")
-plt.grid(axis="y", linestyle="--", alpha=0.35)
-
-
-# -------------------------------- Inset (zoom) --------------------------------
-# região desejada
-phi_zoom = (0.67, 0.80)
-y_zoom   = (1000, 1155)
-
-# converter os φ contínuos para as posições categóricas do eixo x
-x_left  = np.interp(phi_zoom[0], phi_labels, tick_positions)
-x_right = np.interp(phi_zoom[1], phi_labels, tick_positions)
-
-# margem para cobrir os cenários deslocados (offsets) e metade da largura do box
-margin = float(np.max(np.abs(OFFSETS)) + 0.11)  # 0.11 ~ widths/2 se widths=0.22
-x_left  -= margin
-x_right += margin
-
-# cria o inset (ajuste loc/size à vontade)
-axins = inset_axes(ax, width="20%", height="20%", loc="upper right", borderpad=1.0)
-
-# redesenha apenas os grupos dentro do intervalo phi_zoom
-for base_idx, label_tex, triplets in dados_por_cenario:
-    pos_idx_sub, groups_sub = [], []
-    for phi, _n_obs, arr in triplets:
-        if phi_zoom[0] <= phi <= phi_zoom[1]:
+# ---------------------- Função Principal ----------------------
+def main():
+    """Função principal executável."""
+    logger.info("Iniciando análise de dados...")
+    
+    # Coletar dados por cenário
+    dados_por_cenario = []
+    rows_all = []
+    
+    for base_idx, (label_tex, base_dirname) in enumerate(config.BASES):
+        root_path = config.BASE_ROOT / base_dirname
+        logger.info(f"Processando cenário: {label_tex}")
+        
+        triplets = coletar_steps_por_run(root_path, label_tex)
+        if not triplets:
+            logger.warning(f"Nenhum dado encontrado para {label_tex}")
+            continue
+            
+        # Salvar runs individuais
+        for phi, n_obs, arr in triplets:
+            for v in arr:
+                rows_all.append({
+                    "cenario_label": label_tex,
+                    "cenario_tag": base_dirname,
+                    "phi": phi,
+                    "num_obs": n_obs,
+                    "steps_run": float(v),
+                })
+        
+        dados_por_cenario.append((base_idx, label_tex, triplets))
+    
+    # Verificar se há dados
+    if not dados_por_cenario:
+        logger.error("Nenhum dado encontrado para boxplot. Verifique os caminhos.")
+        return
+    
+    # Salvar CSV combinado
+    if rows_all:
+        filtro_tag = "ALL" if config.FILTRO_STEPS == "todos" else "EXTINTOS"
+        out_runs = OUT_DIR / f"steps_boxplot_runs_{filtro_tag}__ALL.csv"
+        pd.DataFrame(rows_all).sort_values(["cenario_tag","phi"]).to_csv(out_runs, index=False)
+        logger.info(f"CSV salvo: {out_runs}")
+    
+    # Preparar eixo categórico
+    phi_labels = sorted({phi for _, _, trips in dados_por_cenario for (phi, _n, _arr) in trips})
+    tick_positions = np.arange(len(phi_labels))
+    
+    # Configurar plot
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=150)
+    
+    cmap = colormaps.get_cmap(config.PLOT_PARAMS['cmap_name'])
+    offsets = symmetric_offsets(len(config.BASES), config.PLOT_PARAMS['offset_delta'])
+    
+    # Plotar boxplots
+    for base_idx, label_tex, triplets in dados_por_cenario:
+        groups = []
+        pos_idx = []
+        
+        for phi, _n_obs, arr in triplets:
             idx = phi_labels.index(phi)
-            pos_idx_sub.append(idx)
-            groups_sub.append(arr)
-    if not groups_sub:
-        continue
+            pos_idx.append(idx)
+            groups.append(arr)
+        
+        if not groups:
+            continue
+            
+        pos_idx, groups = zip(*sorted(zip(pos_idx, groups)))
+        positions = np.array(pos_idx, dtype=float) + offsets[base_idx]
+        
+        # Boxplot
+        bp = ax.boxplot(
+            groups,
+            positions=positions,
+            widths=config.PLOT_PARAMS['boxplot_width'],
+            patch_artist=True,
+            boxprops=dict(facecolor=cmap(base_idx), alpha=0.5),
+            medianprops=dict(color="black"),
+            whiskerprops=dict(color=cmap(base_idx)),
+            capprops=dict(color=cmap(base_idx)),
+            flierprops=dict(marker="o", markersize=3, alpha=0.4,
+                          markerfacecolor=cmap(base_idx), markeredgecolor="none")
+        )
+        
+        # Handle para legenda
+        ax.plot([], [], color=cmap(base_idx), label=label_tex, linewidth=3)
+    
+    # Configurar eixo com escala logarítmica COMEÇANDO EM 1
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels], rotation=0)
+    ax.set_xlabel(r"$\phi$")
+    
+    if config.LOG_SCALE:
+        ax.set_yscale('log')
+        ax.set_ylabel(r"$TT $")
+        ax.set_ylim(config.Y_LIM_LOG[0], config.Y_LIM_LOG[1])
+        ax.set_xlim(config.X_LIM[0], config.X_LIM[1])
+    else:
+        ax.set_ylabel("Passos por run até a captura (distribuição)")
+    
+    ax.grid(axis="y", linestyle="--", alpha=0.35)
+    
+    # Adicionar separadores
+    add_phi_separators_and_phi60(ax, phi_labels, tick_positions)
+    
 
-    pos_idx_sub, groups_sub = zip(*sorted(zip(pos_idx_sub, groups_sub)))
-    positions_sub = np.array(pos_idx_sub, dtype=float) + OFFSETS[base_idx]
+    # CRIAR INSET COM ZOOM
+    #create_inset_zoom(ax, phi_labels, dados_por_cenario, offsets, 
+     #                config.INSET_PHI_RANGE, config.INSET_Y_RANGE)
+    
+    # Legenda com quadro
+    put_phi60_first_in_legend(ax)
+    
+    # Layout e salvamento
+    plt.tight_layout()
+    
+    if config.LOG_SCALE:
+        out_fig = OUT_DIR / "steps_vs_phi_boxplot_log_with_inset.pdf"
+    else:
+        out_fig = OUT_DIR / "steps_vs_phi_boxplot_with_inset.pdf"
+        
+    plt.savefig(out_fig, dpi=200, bbox_inches='tight')
+    logger.info(f"Figura salva: {out_fig}")
+    
+    plt.show()
+    logger.info("Análise concluída com sucesso!")
 
-    axins.boxplot(
-        groups_sub,
-        positions=positions_sub,
-        widths=0.22,
-        patch_artist=True,
-        boxprops=dict(facecolor=cmap(base_idx), alpha=0.5),
-        medianprops=dict(color="black"),
-        whiskerprops=dict(color=cmap(base_idx)),
-        capprops=dict(color=cmap(base_idx)),
-        flierprops=dict(marker="o", markersize=2, alpha=0.3,
-                        markerfacecolor=cmap(base_idx), markeredgecolor="none")
-    )
-
-x_phi60_main = np.interp(0.60, phi_labels, tick_positions)
-ax.axvline(x=x_phi60_main, color="black", linestyle="--", linewidth=1.5,
-           label=r"$\phi = 0.60$")
-# separadores verticais (0.05, 0.15, ..., sem 0.90) e linha 0.60 no inset (sem rótulo)
-for phi_sep in np.arange(0.05, min(0.90, max(phi_labels)) + 1e-12, 0.10):
-    if np.isclose(phi_sep, 0.90):
-        continue
-    x_sep = np.interp(phi_sep, phi_labels, tick_positions)
-    axins.axvline(x=x_sep, color="gray", linestyle="-", alpha=0.4, linewidth=1)
-
-# limites do inset
-axins.set_xlim(x_left, x_right)
-axins.set_ylim(*y_zoom)
-
-# ticks menores no inset
-axins.tick_params(axis="both", labelsize=8)
-
-# linhas de ligação entre a área ampliada e o inset (opcional)
-mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5", alpha=0.7)
-# -------------------------------------------------------------------------------
-
-
-# legenda (φ=0.60 primeiro)
-put_phi60_first_in_legend(ax, frameon=False)
-
-plt.tight_layout()
-plt.subplots_adjust(right=0.95, top=0.95)  # ajuste manual se precisar
-out_fig = OUT_DIR / "steps_vs_phi_boxplot_sep.pdf"
-plt.savefig(out_fig, dpi=200)
-print(f"[OK] Figura boxplot: {out_fig}")
-plt.show()
+if __name__ == "__main__":
+    main()
