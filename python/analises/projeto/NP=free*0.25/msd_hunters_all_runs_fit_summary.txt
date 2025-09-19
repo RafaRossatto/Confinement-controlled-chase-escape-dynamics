@@ -1,6 +1,0 @@
-dt = 1.0
-tau_fit_min = 1, tau_fit_max = 5
-points_used = 5
-slope (MSD vs t) = 1.14636 ± 0.0205
-D (2D, MSD≈4Dt)   = 0.286589 ± 0.00512
-alpha (MSD~t^alpha) = 1.09 ± 0.0099
