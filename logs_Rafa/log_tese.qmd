@@ -2,6 +2,10 @@
 title: "Meu Diário de Pesquisa-Tese"
 format: html
 ---
+## 19/09/2025
+
+- Agora estou na parte das analises. Estou usando o trajpy para calcular o msd a partir da trajetória. Fiz para o caso 0.5, mas preciso fazer para os outros, vou tentar fazer de uma forma mais automatizada.
+
 ## 10/09/2025
 
 - Estou mexendo no código, tirei algumas funcoes que faziam o movimento das células para a classe cell laticce, onde é feito a simulacao. Acredito que eu vou colocar o lopp principal ali. 
