@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import matplotlib.colors as mcolors
 
+
 # -------- Configurações Gerais --------
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
 pattern = "*_hunter_trajectories.csv"

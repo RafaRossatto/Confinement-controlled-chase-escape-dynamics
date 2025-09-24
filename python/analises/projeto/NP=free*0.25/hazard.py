@@ -11,7 +11,7 @@ from pathlib import Path
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
 
 # Fração de caçadores (escolha uma)
-FRAC_C = "Nc=Np*0.8"
+FRAC_C = "Nc=Np"
 
 # -------- Lista de Obstáculos para Processar --------
 OBSTACULOS = [
@@ -74,7 +74,7 @@ def analyze_one_obs(data_dir, tag):
     naf = NelsonAalenFitter()
     kmf.fit(durations=data["time"], event_observed=data["event"])
     naf.fit(durations=data["time"], event_observed=data["event"])
-    
+
     # Hazard plots
     fig, axes = plt.subplots(1, 2, figsize=(18, 5))
     kmf.plot_survival_function(ax=axes[0], ci_show=True)
@@ -126,7 +126,7 @@ def analyze_one_obs(data_dir, tag):
     plt.close()
     
     # retorna todos os valores
-    return tau_fit, beta_fit, tau_err, beta_err, A, C, pcov
+    return tau_fit, beta_fit, tau_err, beta_err, A, C, pcov,t_plato
 
 # -------------------------------
 # 4. Loop para todos obstáculos
@@ -143,7 +143,7 @@ def main():
         
         resultados.append((
             FRAC_C, obs_name, tau, tau_err, beta, beta_err, A, C,
-            pcov[0, 0], pcov[1, 1], pcov[0, 1], pcov[1, 0]
+            pcov[0, 0], pcov[1, 1], pcov[0, 1], pcov[1, 0],t_plato
         ))
     
     df_res = pd.DataFrame(resultados, columns=[

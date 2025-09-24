@@ -11,6 +11,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import logging
 from typing import List, Tuple, Dict, Optional
 from functools import lru_cache
+import seaborn as sns
 
 # ---------------------- Configuração de Logging ----------------------
 logging.basicConfig(
@@ -197,6 +198,29 @@ def coletar_steps_por_run(base_root: Path, label_tex: str) -> List[Tuple[float, 
             continue
 
     return resultados
+
+def plot_kde_distribuicoes(dados_por_cenario, out_dir: Path):
+    """Gera gráficos KDE das distribuições de steps para cada configuração."""
+    for base_idx, label_tex, triplets in dados_por_cenario:
+        for phi, n_obs, arr in triplets:
+            if len(arr) < 2:
+                continue  # precisa de pelo menos 2 pontos para KDE
+            
+            plt.figure(figsize=(7, 4))
+            sns.kdeplot(arr, fill=True, color="blue", alpha=0.4, linewidth=2)
+            
+            plt.title(f"Distribuição dos steps\n{label_tex}, φ={phi:.2f}")
+            plt.xlabel("Steps até a captura")
+            plt.ylabel("Densidade KDE")
+            plt.grid(alpha=0.3)
+            
+            safe_label = re.sub(r'[^a-zA-Z0-9_]+', '_', label_tex)  # mantém só letras/números/underscore
+            out_file = out_dir / f"kde_steps_{safe_label}_phi{phi:.2f}.pdf"
+            plt.savefig(out_file, dpi=150, bbox_inches="tight")
+            plt.close()
+            
+            logger.info(f"KDE salvo: {out_file}")
+
 
 def add_phi_separators_and_phi60(ax, phi_sorted, tick_positions):
     """Adiciona linhas verticais nos separadores de phi."""
@@ -440,7 +464,8 @@ def main():
         
     plt.savefig(out_fig, dpi=200, bbox_inches='tight')
     logger.info(f"Figura salva: {out_fig}")
-    
+    # Salvar os KDEs
+    plot_kde_distribuicoes(dados_por_cenario, OUT_DIR)
     plt.show()
     logger.info("Análise concluída com sucesso!")
 
