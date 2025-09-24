@@ -11,7 +11,7 @@ from pathlib import Path
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
 
 # Fração de caçadores (escolha uma)
-FRAC_C = "Nc=Np"
+FRAC_C = "Nc=Np*0.8"
 
 # -------- Lista de Obstáculos para Processar --------
 OBSTACULOS = [
@@ -76,16 +76,13 @@ def analyze_one_obs(data_dir, tag):
     naf.fit(durations=data["time"], event_observed=data["event"])
     
     # Hazard plots
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(18, 5))
     kmf.plot_survival_function(ax=axes[0], ci_show=True)
     axes[0].set_title("Função de Sobrevivência (Kaplan–Meier)")
     axes[0].set_ylabel("S(t)"); axes[0].grid(True, alpha=0.3)
     naf.plot_hazard(ax=axes[1], bandwidth=5, ci_show=True)
     axes[1].set_title("Taxa de Risco Instantânea (Nelson–Aalen)")
     axes[1].set_ylabel("h(t)"); axes[1].grid(True, alpha=0.3)
-    naf.plot_cumulative_hazard(ax=axes[2], ci_show=True)
-    axes[2].set_title("Hazard Acumulado (Nelson–Aalen)")
-    axes[2].set_ylabel("H(t)"); axes[2].grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(OUT_DIR / f"{tag}_hazard_x_t.pdf", bbox_inches="tight")
     plt.close()
@@ -107,7 +104,7 @@ def analyze_one_obs(data_dir, tag):
     tau_err, beta_err = np.sqrt(np.diag(pcov))
     
     print(f"τ = {tau_fit:.3f} ± {tau_err:.3f}, β = {beta_fit:.3f} ± {beta_err:.3f}")
-    
+       
     # Fit plot
     time_range = np.linspace(0, km_time.max(), 1000)
     fitted_survival = model_fixed_ac(time_range, tau_fit, beta_fit)
@@ -128,8 +125,8 @@ def analyze_one_obs(data_dir, tag):
     plt.savefig(OUT_DIR / f"{tag}_fit_hazard_x_t.pdf", bbox_inches="tight")
     plt.close()
     
-    return tau_fit, beta_fit, A, C
-
+    # retorna todos os valores
+    return tau_fit, beta_fit, tau_err, beta_err, A, C, pcov
 
 # -------------------------------
 # 4. Loop para todos obstáculos
@@ -142,11 +139,22 @@ def main():
             print(f"[Aviso] Pasta não encontrada: {obs_dir}")
             continue
         tag = f"{FRAC_C}_{obs_name.replace('s_', '')}"
-        tau, beta, A, C = analyze_one_obs(obs_dir, tag)
-        resultados.append((FRAC_C, obs_name, tau, beta, A, C))
+        tau, beta, tau_err, beta_err, A, C, pcov = analyze_one_obs(obs_dir, tag)
+        
+        resultados.append((
+            FRAC_C, obs_name, tau, tau_err, beta, beta_err, A, C,
+            pcov[0, 0], pcov[1, 1], pcov[0, 1], pcov[1, 0]
+        ))
     
-    # salvar tabela com resultados
-    df_res = pd.DataFrame(resultados, columns=["frac_c", "obs", "tau", "beta", "A", "C"])
+    df_res = pd.DataFrame(resultados, columns=[
+        "frac_c", "obs",
+        "tau", "tau_err",
+        "beta", "beta_err",
+        "A", "C",
+        "cov_tau_tau", "cov_beta_beta",
+        "cov_tau_beta", "cov_beta_tau"
+    ])
+    
     df_res.to_csv(OUT_DIR / f"{FRAC_C}_fit_results.csv", index=False)
     print("\n[OK] Resultados salvos em CSV!")
 
