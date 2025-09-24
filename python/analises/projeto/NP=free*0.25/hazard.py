@@ -103,7 +103,7 @@ def analyze_one_obs(data_dir, tag):
     tau_fit, beta_fit = popt
     tau_err, beta_err = np.sqrt(np.diag(pcov))
     
-    print(f"τ = {tau_fit:.3f} ± {tau_err:.3f}, β = {beta_fit:.3f} ± {beta_err:.3f}")
+    print(fr"\tau = {tau_fit:.3f} ± {tau_err:.3f}, \beta = {beta_fit:.3f} ± {beta_err:.3f}")
        
     # Fit plot
     time_range = np.linspace(0, km_time.max(), 1000)
@@ -114,10 +114,10 @@ def analyze_one_obs(data_dir, tag):
     plt.plot(time_range, fitted_survival, 'r-', linewidth=2, 
              label=f'Modelo: A·exp(-(t/τ)^β) + C\nτ={tau_fit:.2f}, β={beta_fit:.2f}')
     plt.axhline(y=sobrevivencia_inicial, color='g', linestyle='--', alpha=0.7, 
-                label=f'S(0) = {sobrevivencia_inicial:.3f}')
+                label=f'A = {sobrevivencia_inicial:.3f}')
     plt.axhline(y=C, color='purple', linestyle='--', alpha=0.7, 
-                label=f'S(∞) = {C:.3f}')
-    plt.xlabel('Tempo (steps)')
+                label=f'C = {C:.3f}')
+    plt.xlabel('steps')
     plt.ylabel('Probabilidade de Sobrevivência S(t)')
     plt.title(f'Ajuste do Modelo ({tag})')
     plt.legend(); plt.grid(True, alpha=0.3)
