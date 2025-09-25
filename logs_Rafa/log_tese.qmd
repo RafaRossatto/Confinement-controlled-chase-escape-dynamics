@@ -2,6 +2,11 @@
 title: "Meu Diário de Pesquisa-Tese"
 format: html
 ---
+
+## 25/09/2025
+
+- Estou fazendo a apresentacao, precisa melhorar a questao das corres e colocar as legendas.
+
 ## 19/09/2025
 
 - Agora estou na parte das analises. Estou usando o trajpy para calcular o msd a partir da trajetória. Fiz para o caso 0.5, mas preciso fazer para os outros, vou tentar fazer de uma forma mais automatizada.

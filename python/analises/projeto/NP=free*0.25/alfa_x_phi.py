@@ -207,7 +207,7 @@ def main():
             alpha_means = np.array(alpha_means)
             alpha_stds = np.array(alpha_stds)
     
-            color = cmap_flag(base_idx / (len(config.BASES)-1))
+            color = cmap_flag(base_idx)
             ax.errorbar(
                 phi_vals, alpha_means, yerr=alpha_stds,
                 fmt="-o", color=color, label=label_tex,
@@ -230,10 +230,10 @@ def main():
         loc=config.LEGEND_LOCATION,
         fontsize=14
     )
-    
+    plt.grid(alpha=0.3)
     plt.tight_layout()
     ax.axvline(x=0.6, color="black", linestyle="--", linewidth=1.5, label=r"$\phi = 0.60$")
-    fig_pdf = OUT_DIR / "alpha_vs_phi_lines.pdf"
+    fig_pdf = OUT_DIR / "alpha_vs_phi.pdf"
     plt.savefig(fig_pdf, bbox_inches="tight")
     plt.show()
     logger.info("Análise de alpha concluída com sucesso (linhas ± std)!")

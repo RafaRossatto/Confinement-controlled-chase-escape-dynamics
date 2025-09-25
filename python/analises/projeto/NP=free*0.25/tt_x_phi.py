@@ -53,7 +53,7 @@ class Config:
     
     # Escala logarítmica apenas no gráfico principal
     LOG_SCALE = True
-    Y_LIM_LOG = (1, 1250)  # Começando em 1 na escala log
+    Y_LIM_LOG = (7, 200)  # Começando em 1 na escala log
     X_LIM = (-0.5, 8.5)  # Começando em 1 na escala log
     # Configuração do inset
     INSET_Y_RANGE = (1000, 1200)  # Faixa Y para o inset
@@ -269,80 +269,27 @@ def put_phi60_first_in_legend(ax):
                  facecolor='white',      # Cor de fundo
                  fontsize=10)            # Tamanho da fonte
 
-def create_inset_zoom(ax, phi_labels, dados_por_cenario, offsets, phi_range, y_range):
-    """Cria inset de zoom para uma região específica."""
-    try:
-        ax_inset = inset_axes(ax, width="25%", height="25%", loc='upper right')
-        
-        cmap = colormaps.get_cmap(config.PLOT_PARAMS['cmap_name'])
-        tick_positions = np.arange(len(phi_labels))
-        
-        # Coletar dados para a faixa de φ especificada
-        for base_idx, label_tex, triplets in dados_por_cenario:
-            groups = []
-            pos_idx = []
-            
-            for phi, _n_obs, arr in triplets:
-                if phi_range[0] <= phi <= phi_range[1]:
-                    idx = phi_labels.index(phi)
-                    pos_idx.append(idx)
-                    groups.append(arr)
-            
-            if not groups:
-                continue
-                
-            pos_idx, groups = zip(*sorted(zip(pos_idx, groups)))
-            positions = np.array(pos_idx, dtype=float) + offsets[base_idx]
-            
-            # Boxplot no inset
-            ax_inset.boxplot(
-                groups,
-                positions=positions,
-                widths=config.PLOT_PARAMS['boxplot_width'],
-                patch_artist=True,
-                boxprops=dict(facecolor=cmap(base_idx), alpha=0.5),
-                medianprops=dict(color="black"),
-                whiskerprops=dict(color=cmap(base_idx)),
-                capprops=dict(color=cmap(base_idx)),
-                flierprops=dict(marker="o", markersize=3, alpha=0.4,
-                              markerfacecolor=cmap(base_idx), markeredgecolor="none")
-            )
-        
-        # Configurar eixo do inset - ESCALA NORMAL
-        phi_sorted = sorted(phi_labels)
-        phi_in_range = [phi for phi in phi_sorted if phi_range[0] <= phi <= phi_range[1]]
-        
-        if phi_in_range:
-            # Encontrar posições dos ticks
-            tick_positions_inset = []
-            tick_labels_inset = []
-            for phi in phi_in_range:
-                idx = phi_sorted.index(phi)
-                tick_positions_inset.append(idx)
-                tick_labels_inset.append(f"{phi:.1f}")
-            
-            ax_inset.set_xticks(tick_positions_inset)
-            ax_inset.set_xticklabels(tick_labels_inset, rotation=0, fontsize=8)
-        
-        # Configurar limites do inset
-        ax_inset.set_xlim(
-            np.interp(phi_range[0], phi_sorted, tick_positions) - 0.5,
-            np.interp(phi_range[1], phi_sorted, tick_positions) + 0.5
-        )
-        ax_inset.set_ylim(y_range[0], y_range[1])
-        
-        ax_inset.set_ylabel('Passos', fontsize=9)
-        ax_inset.set_xlabel(r'$\phi$', fontsize=9)
-        ax_inset.grid(True, alpha=0.3)
-        ax_inset.tick_params(labelsize=8)
-        
-        return ax_inset
-        
-    except Exception as e:
-        logger.warning(f"Erro ao criar inset: {e}")
-        return None
+def add_phi_separators_and_phi60(ax, phi_sorted, tick_positions):
+    """Adiciona linhas verticais nos separadores de φ e uma faixa em φ=0.60."""
+    phi_max = max(phi_sorted) if phi_sorted else 1.0
+    
+    # linhas de separação em intervalos regulares
+    for phi_sep in np.arange(config.PLOT_PARAMS['phi_separators_start'], 
+                             min(config.PLOT_PARAMS['phi_separators_max'], phi_max) + 1e-12, 
+                             config.PLOT_PARAMS['phi_separators_step']):
+        if np.isclose(phi_sep, config.PLOT_PARAMS['phi_separators_max']):
+            continue
+        x_sep = np.interp(phi_sep, phi_sorted, tick_positions)
+        ax.axvline(x=x_sep, color="gray", linestyle="-", alpha=0.5, linewidth=1)
+    
+    # faixa em φ=0.60
+    if config.PLOT_PARAMS['phi_line_special'] <= phi_max:
+        x_phi60 = np.interp(config.PLOT_PARAMS['phi_line_special'], phi_sorted, tick_positions)
+        ax.axvspan(x_phi60 - 0.5, x_phi60 + 0.5,   # largura ajustável
+                   color="red", alpha=0.2,
+                   label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
 
-# ---------------------- Função Principal ----------------------
+
 def main():
     """Função principal executável."""
     logger.info("Iniciando análise de dados...")
@@ -373,15 +320,14 @@ def main():
         
         dados_por_cenario.append((base_idx, label_tex, triplets))
     
-    # Verificar se há dados
     if not dados_por_cenario:
-        logger.error("Nenhum dado encontrado para boxplot. Verifique os caminhos.")
+        logger.error("Nenhum dado encontrado para análise. Verifique os caminhos.")
         return
     
     # Salvar CSV combinado
     if rows_all:
         filtro_tag = "ALL" if config.FILTRO_STEPS == "todos" else "EXTINTOS"
-        out_runs = OUT_DIR / f"steps_boxplot_runs_{filtro_tag}__ALL.csv"
+        out_runs = OUT_DIR / f"steps_runs_{filtro_tag}__ALL.csv"
         pd.DataFrame(rows_all).sort_values(["cenario_tag","phi"]).to_csv(out_runs, index=False)
         logger.info(f"CSV salvo: {out_runs}")
     
@@ -391,7 +337,6 @@ def main():
     
     # Configurar plot
     fig, ax = plt.subplots(figsize=(12, 6), dpi=150)
-    
     cmap = colormaps.get_cmap(config.PLOT_PARAMS['cmap_name'])
     offsets = symmetric_offsets(len(config.BASES), config.PLOT_PARAMS['offset_delta'])
     
@@ -411,8 +356,7 @@ def main():
         pos_idx, groups = zip(*sorted(zip(pos_idx, groups)))
         positions = np.array(pos_idx, dtype=float) + offsets[base_idx]
         
-        # Boxplot
-        bp = ax.boxplot(
+        ax.boxplot(
             groups,
             positions=positions,
             widths=config.PLOT_PARAMS['boxplot_width'],
@@ -422,20 +366,21 @@ def main():
             whiskerprops=dict(color=cmap(base_idx)),
             capprops=dict(color=cmap(base_idx)),
             flierprops=dict(marker="o", markersize=3, alpha=0.4,
-                          markerfacecolor=cmap(base_idx), markeredgecolor="none")
+                            markerfacecolor=cmap(base_idx), markeredgecolor="none")
         )
         
         # Handle para legenda
         ax.plot([], [], color=cmap(base_idx), label=label_tex, linewidth=3)
     
-    # Configurar eixo com escala logarítmica COMEÇANDO EM 1
+    # Eixos
     ax.set_xticks(tick_positions)
-    ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels], rotation=0)
+    ax.set_xticklabels([f"{phi:.2f}" for phi in phi_labels], rotation=0)
+    ax.tick_params(axis='x', which='both', length=0)
     ax.set_xlabel(r"$\phi$")
     
     if config.LOG_SCALE:
         ax.set_yscale('log')
-        ax.set_ylabel(r"$TT $")
+        ax.set_ylabel(r"$TT$")
         ax.set_ylim(config.Y_LIM_LOG[0], config.Y_LIM_LOG[1])
         ax.set_xlim(config.X_LIM[0], config.X_LIM[1])
     else:
@@ -443,28 +388,19 @@ def main():
     
     ax.grid(axis="y", linestyle="--", alpha=0.35)
     
-    # Adicionar separadores
+    # Adicionar separadores + faixa em φ=0.60
     add_phi_separators_and_phi60(ax, phi_labels, tick_positions)
     
-
-    # CRIAR INSET COM ZOOM
-    #create_inset_zoom(ax, phi_labels, dados_por_cenario, offsets, 
-     #                config.INSET_PHI_RANGE, config.INSET_Y_RANGE)
-    
-    # Legenda com quadro
+    # Legenda
     put_phi60_first_in_legend(ax)
     
-    # Layout e salvamento
+    # Layout e salvar
     plt.tight_layout()
-    
-    if config.LOG_SCALE:
-        out_fig = OUT_DIR / "steps_vs_phi_boxplot_log_with_inset.pdf"
-    else:
-        out_fig = OUT_DIR / "steps_vs_phi_boxplot_with_inset.pdf"
-        
+    out_fig = OUT_DIR / ("TT_vs_phi_boxplot.pdf" if config.LOG_SCALE else "TT_vs_phi.pdf")
     plt.savefig(out_fig, dpi=200, bbox_inches='tight')
     logger.info(f"Figura salva: {out_fig}")
-    # Salvar os KDEs
+    
+    # Salvar os KDEs também
     plot_kde_distribuicoes(dados_por_cenario, OUT_DIR)
     plt.show()
     logger.info("Análise concluída com sucesso!")

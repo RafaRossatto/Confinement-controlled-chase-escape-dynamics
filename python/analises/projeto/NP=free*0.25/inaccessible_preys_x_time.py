@@ -258,7 +258,7 @@ def main():
                          color=CMAP(base_idx), label=label_tex)
 
     # linha de referência (percolação de sítio ~0.592746; você marcou φ no eixo)
-    plt.axvline(x=PHI_LINE, color='black', linestyle='--', linewidth=1.5,
+    plt.axvline(x=0.60, color='black', linestyle='--', linewidth=1.5,
                 label=r'$\phi_{c} = 0.60$')
 
     plt.xlabel(r"$\phi$", fontsize=22)

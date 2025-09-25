@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pathlib import Path
 import re
-
+from matplotlib import colormaps
 # ---------------------- parâmetros ----------------------
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
 IN_DIR = BASE_ROOT / "resultados_modelos" / "FTP_data"
@@ -16,6 +16,7 @@ bases = [
     "Nc=Np"
 ]
 
+cmap = colormaps.get_cmap("flag")
 L = 128
 area_total = L * L
 
@@ -32,6 +33,8 @@ for f in csv_files:
     obs_tag = m.group(1)
     obs_groups.setdefault(obs_tag, []).append(f)
 
+from matplotlib import colormaps
+
 # ---------------------- Loop por obstáculo ----------------------
 for obs_tag, files in obs_groups.items():
     # calcula fração de obstáculos (phi)
@@ -47,19 +50,25 @@ for obs_tag, files in obs_groups.items():
     # ---- 1) Comparativo ----
     plt.figure(figsize=(8, 5))
     found_any = False
-    for base_tag in bases:
+    cmap = colormaps.get_cmap("flag")  # <<<<<< paleta de cores
+
+    for i, base_tag in enumerate(bases):
         fp = idx.get(base_tag, None)
         if fp is None:
             continue
         df = pd.read_csv(fp)
-        sns.kdeplot(x=df["ftp"], bw_adjust=1.0, fill=False, lw=2, label=base_tag)
+        color = cmap(i)  # pega uma cor da paleta
+        sns.kdeplot(
+            x=df["ftp"], bw_adjust=1.0,
+            fill=False, lw=2,
+            label=base_tag, color=color
+        )
         found_any = True
 
     if found_any:
         plt.title(fr"$\phi$={phi}")
         plt.xlabel("timestep")
         plt.ylabel("FTP - Density")
-        #plt.xlim(left=-0.5)
         plt.legend()
         plt.tight_layout()
         out_file = OUT_DIR / f"{obs_tag}_FTP_kde_comparativo.pdf"
@@ -78,9 +87,9 @@ for obs_tag, files in obs_groups.items():
         plt.title(fr"FTP - {obs_tag}, {base_tag} ($\phi$={phi})")
         plt.xlabel("timestep")
         plt.ylabel("Density")
-        #plt.xlim(left=-0.5)
         plt.tight_layout()
         out_file = OUT_DIR / f"{obs_tag}_{base_tag}_FTP_kde.pdf"
         plt.savefig(out_file)
         plt.close()
         print(f"[OK] KDE individual salvo em: {out_file}")
+

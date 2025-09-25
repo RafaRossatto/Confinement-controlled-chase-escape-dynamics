@@ -17,7 +17,7 @@ AREA = L**2
 BASE_ROOT   = Path.home() / "Dados_Doc" / "Np=free*0.25"
 HAZARD_DIR  = BASE_ROOT / "resultados_modelos" / "hazard"
 DIST_DIR    = BASE_ROOT / "resultados_modelos" / "dist_min"
-OUT_DIR     = BASE_ROOT / "resultados_modelos" / "tau_x_d"
+OUT_DIR     = BASE_ROOT / "resultados_modelos" / "beta_x_d"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------- colormap divergente ----------
@@ -27,20 +27,20 @@ VMIN = 0.0
 for NC_TAG, LABEL_TEX in SCENARIOS:
     print(f"[INFO] Processando {NC_TAG}...")
 
-    # ---------- carregar τ ----------
-    tau_file = HAZARD_DIR / f"{NC_TAG}_fit_results.csv"
-    if not tau_file.exists():
-        print(f"[x] Arquivo não encontrado: {tau_file}")
+    # ---------- carregar β ----------
+    beta_file = HAZARD_DIR / f"{NC_TAG}_fit_results.csv"
+    if not beta_file.exists():
+        print(f"[x] Arquivo não encontrado: {beta_file}")
         continue
 
-    df_tau = pd.read_csv(tau_file)
-    if not {"obs", "tau", "tau_err"}.issubset(df_tau.columns):
-        print(f"[x] Colunas τ não encontradas em {tau_file}")
+    df_beta = pd.read_csv(beta_file)
+    if not {"obs", "beta", "beta_err"}.issubset(df_beta.columns):
+        print(f"[x] Colunas β não encontradas em {beta_file}")
         continue
 
-    df_tau["num_obs"] = df_tau["obs"].str.replace("s_obs_", "", regex=False).astype(int)
-    df_tau["phi"]     = df_tau["num_obs"] / AREA
-    df_tau = df_tau[["phi", "tau", "tau_err"]]
+    df_beta["num_obs"] = df_beta["obs"].str.replace("s_obs_", "", regex=False).astype(int)
+    df_beta["phi"]     = df_beta["num_obs"] / AREA
+    df_beta = df_beta[["phi", "beta", "beta_err"]]
 
     # ---------- carregar d ----------
     d_file = DIST_DIR / f"dist_min_agregado_{NC_TAG}.csv"
@@ -59,13 +59,12 @@ for NC_TAG, LABEL_TEX in SCENARIOS:
     else:
         df_d["d_std"] = np.nan
 
-    # garantir que tenha phi
     if "phi" not in df_d.columns:
         print(f"[x] Coluna 'phi' não encontrada em {d_file}")
         continue
 
     # ---------- merge usando phi ----------
-    df = pd.merge(df_tau, df_d, on="phi", how="inner")
+    df = pd.merge(df_beta, df_d, on="phi", how="inner")
     if df.empty:
         print(f"[ERRO] Merge vazio para {NC_TAG}")
         continue
@@ -79,13 +78,13 @@ for NC_TAG, LABEL_TEX in SCENARIOS:
     # ---------- plot ----------
     plt.figure(figsize=(10,7), dpi=150)
     sc = plt.scatter(
-        df["tau"], df["d_mean"],
+        df["beta"], df["d_mean"],
         c=df["phi"], cmap="coolwarm", norm=norm,
         s=80, edgecolor="k", linewidth=0.4, zorder=3, label=LABEL_TEX
     )
 
- 
-    plt.xlabel(r"$\tau$", fontsize=22)
+
+    plt.xlabel(r"$\beta$", fontsize=22)
     plt.ylabel(r"$\langle d \rangle$", fontsize=22)
     plt.title(LABEL_TEX, fontsize=18)
 
@@ -100,7 +99,7 @@ for NC_TAG, LABEL_TEX in SCENARIOS:
     plt.tight_layout()
 
     # salvar
-    out_file = OUT_DIR / f"tau_vs_d_{NC_TAG}.pdf"
+    out_file = OUT_DIR / f"beta_vs_d_{NC_TAG}.pdf"
     plt.savefig(out_file, dpi=300, bbox_inches="tight")
     plt.close()
 

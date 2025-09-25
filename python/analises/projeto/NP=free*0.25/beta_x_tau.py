@@ -1,96 +1,81 @@
 import pandas as pd
-from pathlib import Path
-import re
 import matplotlib.pyplot as plt
+from pathlib import Path
 from matplotlib.colors import TwoSlopeNorm
 import numpy as np
 
-# ========= escolha do cenário (um por vez) =========
-NC_TAG    = "Nc=Np"          # "Nc=Np", "Nc=Np*0.8", "Nc=Np*0.5"
-LABEL_TEX = r"$N^{C}_{0}=N^{E}_{0}$"
-# ===================================================
+# ========= lista de cenários =========
+SCENARIOS = [
+    ("Nc=Np",     r"$N^{C}_{0}=N^{E}_{0}$"),
+    ("Nc=Np*0.8", r"$N^{C}_{0}=0.8\,N^{E}_{0}$"),
+    ("Nc=Np*0.5", r"$N^{C}_{0}=0.5\,N^{E}_{0}$"),
+]
+# =====================================
 
-# Caminho base
-base = Path.home() / "Dados_Doc" / "Np=free*0.25" / "resultados_modelos"
-
-# Lista de arquivos do cenário escolhido
-arquivos = sorted(base.glob(f"params_por_run_EXPbeta_{NC_TAG}_s_obs_*.csv"))
-
-dados = []
 L = 128
-area = L**2
+AREA = L**2
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+HAZARD_DIR = BASE_ROOT / "resultados_modelos" / "hazard"
 OUT_DIR = BASE_ROOT / "resultados_modelos" / "beta_x_tau"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-for arq in arquivos:
-    m = re.search(r"s_obs_(\d+)", arq.name)
-    if not m:
+for NC_TAG, LABEL_TEX in SCENARIOS:
+    fpath = HAZARD_DIR / f"{NC_TAG}_fit_results.csv"
+    if not fpath.exists():
+        print(f"[x] Arquivo não encontrado: {fpath}")
         continue
-    n_obs = int(m.group(1))
-    frac_obs = n_obs / area
 
-    df = pd.read_csv(arq)
-    if {"tau","beta"}.issubset(df.columns):
-        tau_mean  = df["tau"].mean()
-        tau_std   = df["tau"].std(ddof=1) if len(df) > 1 else 0.0
-        beta_mean = df["beta"].mean()
-        beta_std  = df["beta"].std(ddof=1) if len(df) > 1 else 0.0
-        dados.append({
-            "frac_obs": frac_obs,
-            "tau_mean": tau_mean,  "tau_std": tau_std,
-            "beta_mean": beta_mean,"beta_std": beta_std
-        })
+    df = pd.read_csv(fpath).copy()
 
-if not dados:
-    raise SystemExit(f"Nenhum arquivo válido encontrado para {NC_TAG}.")
+    # checar colunas necessárias
+    expected_cols = {"obs", "tau", "tau_err", "beta", "beta_err"}
+    if not expected_cols.issubset(df.columns):
+        print(f"[x] Colunas {expected_cols} não encontradas em {fpath}")
+        continue
 
-df_tb = pd.DataFrame(dados).sort_values("frac_obs")
+    # extrair φ a partir do campo "obs"
+    df["n_obs"] = df["obs"].str.replace("s_obs_", "", regex=False).astype(int)
+    df["phi"] = df["n_obs"] / AREA
+    df_sorted = df.sort_values("phi")
 
-plt.figure(figsize=(10,7), dpi=150)
+    # ======================== Plot ========================
+    plt.figure(figsize=(10,7), dpi=150)
 
-# Normalização divergente centrada em 0.60 (φ = fração de obstáculos)
-phi = df_tb["frac_obs"].to_numpy()
-vmin = float(np.nanmin(phi)); 
-vmax = float(np.nanmax(phi))
-VCENTER = 0.60
-if not (vmin <= VCENTER <= vmax):
-    eps = 1e-9
-    vmin = min(vmin, VCENTER - eps)
-    vmax = max(vmax, VCENTER + eps)
-norm = TwoSlopeNorm(vmin=vmin, vcenter=VCENTER, vmax=vmax)
+    phi = df_sorted["phi"].to_numpy()
+    vmin = float(np.nanmin(phi))
+    vmax = float(np.nanmax(phi))
+    VCENTER = 0.60
+    if not (vmin <= VCENTER <= vmax):
+        eps = 1e-9
+        vmin = min(vmin, VCENTER - eps)
+        vmax = max(vmax, VCENTER + eps)
 
-# Scatter τ × β (cor = φ)
-sc = plt.scatter(
-    df_tb["tau_mean"], df_tb["beta_mean"],
-    c=df_tb["frac_obs"], cmap="coolwarm", norm=norm,
-    s=80, edgecolor="k", linewidth=0.4
-)
+    norm = TwoSlopeNorm(vmin=vmin, vcenter=VCENTER, vmax=vmax)
 
-# Barras de erro (x: τ_std, y: β_std)
-#plt.errorbar(
-#    df_tb["tau_mean"], df_tb["beta_mean"],
-#    xerr=df_tb["tau_std"], yerr=df_tb["beta_std"],
-#    fmt="none", ecolor="gray", alpha=0.7, capsize=4
-#)
+    # scatter τ × β (cor = φ)
+    sc = plt.scatter(
+        df_sorted["tau"], df_sorted["beta"],
+        c=df_sorted["phi"], cmap="coolwarm", norm=norm,
+        s=80, edgecolor="k", linewidth=0.4
+    )
 
+    plt.xlabel(r"$\tau$", fontsize=22)
+    plt.ylabel(r"$\beta$", fontsize=22)
+    plt.title(rf"{LABEL_TEX}", fontsize=18)
 
+    # colorbar para φ
+    cbar = plt.colorbar(sc, pad=0.02)
+    cbar.set_label(r"$\phi$")
+    cbar.ax.axhline(VCENTER, color="k", lw=1)
+    cbar.set_ticks([vmin, VCENTER, vmax])
+    cbar.set_ticklabels([f"{vmin:.2f}", f"{VCENTER:.2f}", f"{vmax:.2f}"])
 
-plt.xlabel(r"$\langle \tau \rangle$")
-plt.ylabel(r"$\langle \beta \rangle$")
-plt.title(rf" {LABEL_TEX}")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
 
-# Colorbar para φ
-cbar = plt.colorbar(sc, pad=0.02)
-cbar.set_label(r"$\phi$")
-# marca o centro na colorbar
-cbar.ax.axhline(VCENTER, color="k", lw=1)
-cbar.set_ticks([vmin, VCENTER, vmax])
-cbar.set_ticklabels([f"{vmin:.2f}", f"{VCENTER:.2f}", f"{vmax:.2f}"])
+    # salvar
+    out_file = OUT_DIR / f"beta_vs_tau_{NC_TAG}.pdf"
+    plt.savefig(out_file, bbox_inches="tight", dpi=300)
+    plt.close()
 
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-#plt.savefig(f"tau_vs_beta_{NC_TAG}.pdf", dpi=300)
-fig_pdf = OUT_DIR / f"tau_vs_beta_{NC_TAG}.pdf"
-plt.savefig(fig_pdf, bbox_inches="tight")
-plt.show()
+    print(f"[OK] Figura salva em {out_file}")

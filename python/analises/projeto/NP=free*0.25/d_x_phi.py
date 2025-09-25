@@ -291,7 +291,7 @@ def main():
             ax.errorbar(xs, ys, yerr=es, fmt="o-", ms=5, lw=1.6,
                         capsize=3, color=cmap(k), label=label_tex)
 
-        ax.axvline(PHI_LINE, color="black", linestyle="--", lw=1.3, label=fr"$\phi_c \approx {PHI_LINE:.2f}$")
+        ax.axvline(PHI_LINE, color="black", linestyle="--", lw=1.3, label=fr"$\phi_c = {PHI_LINE:.2f}$")
         ax.set_xlabel(r"$\phi$", fontsize=22)
         ax.set_ylabel(r"$\langle d \rangle$",fontsize=22)
         ax.grid(True, linestyle="--", alpha=0.6)
