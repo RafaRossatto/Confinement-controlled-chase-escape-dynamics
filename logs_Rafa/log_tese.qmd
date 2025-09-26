@@ -5,6 +5,10 @@ format: html
 
 ## 25/09/2025
 
+- Fiz um noco código para o msd usando trajpy. Estou gerando os dados, para depois calcular o alfa.
+
+## 25/09/2025
+
 - Estou fazendo a apresentacao, precisa melhorar a questao das corres e colocar as legendas.
 
 ## 19/09/2025

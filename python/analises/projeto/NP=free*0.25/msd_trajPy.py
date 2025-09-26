@@ -1,86 +1,132 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-EA-MSD 2D com TrajPy
----------------------
-- Lê *_hunter_trajectories.csv
-- Unwrap CPC (Lx=Ly=128)
-- Junta todas as partículas em um Trajectory único
-- Calcula o EA-MSD com trajpy.Trajectory.msd_ensemble_averaged
-- Salva CSV: tau, msd, n_contrib
-"""
-
 from pathlib import Path
-import numpy as np
 import pandas as pd
+import logging
+import numpy as np
+import matplotlib.pyplot as plt
 from trajpy.trajpy import Trajectory
 
-# ================= Configurações =================
+# ---------------------- Logging configuration ----------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# -------- General Configurations --------
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
-PATTERN = "*_hunter_trajectories.csv"
-OUT_DIR = BASE_ROOT / "resultados_modelos" / "msd_ensemble"
+pattern = "*_hunter_trajectories.csv"
+Lx = Ly = 128
+min_traj_length = 5
+
+# Output
+OUT_DIR = BASE_ROOT / "resultados_modelos" / "msd_trajPy"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-Lx = Ly = 128
-MAX_TAU = 50
-MIN_TRAJ_LENGTH = 5
+# Concentrations
+CONCENTRACOES = ["Nc=Np*0.5", "Nc=Np*0.8", "Nc=Np"]
 
-# ================= Funções =================
-def unwrap_1d(x, L):
-    x = np.asarray(x, float)
-    dx = np.diff(x)
-    dx -= np.round(dx / L) * L
-    xu = np.empty_like(x)
-    xu[0] = x[0]
-    xu[1:] = xu[0] + np.cumsum(dx)
-    return xu
+# Obstacles
+OBSTACULOS = [
+    "s_obs_00", "s_obs_1638", "s_obs_3276", "s_obs_4915",
+    "s_obs_6553", "s_obs_8192", "s_obs_9830",
+    "s_obs_11468", "s_obs_13107"
+]
 
-def unwrap_xy(x, y, Lx, Ly):
-    return unwrap_1d(x, Lx), unwrap_1d(y, Ly)
+# ---------------------- Load file into DataFrame -------------------
+def load_trajectory(file_path: Path) -> pd.DataFrame:
+    try:
+        df = pd.read_csv(file_path)
+        #logger.info(f"File loaded successfully: {file_path.name}")
+        #logger.info(f"DataFrame shape: {df.shape}")
+        #logger.info(f"Columns detected: {list(df.columns)}")
+        return df
+    except Exception as e:
+        logger.error(f"Failed to load file {file_path.name}: {e}")
+        raise
 
-def processar_arquivo(arq: Path):
-    print(f"[INFO] Processando {arq.name}")
-    df = pd.read_csv(arq, usecols=["timestep", "cell_id", "x", "y"])
-    df = df.sort_values(["cell_id", "timestep"])
+# ---------------------- Unwrap function -----------------------------
+def unwrap_trajectory(df_particle: pd.DataFrame, L: int) -> pd.DataFrame:
+    df_particle = df_particle.sort_values("timestep").copy()
 
-    # Pivotar: garantir mesmo nº de steps por partícula
-    trajetorias = []
-    for cid, g in df.groupby("cell_id"):
-        x, y = unwrap_xy(g["x"].to_numpy(float), g["y"].to_numpy(float), Lx, Ly)
-        if len(x) < MIN_TRAJ_LENGTH:
-            continue
-        traj = np.column_stack([x, y])  # shape (Nsteps, 2)
-        trajetorias.append(traj)
+    x_unwrapped = [df_particle["x"].iloc[0]]
+    y_unwrapped = [df_particle["y"].iloc[0]]
 
-    if not trajetorias:
-        print(f"[WARN] Nenhuma trajetória válida em {arq.name}")
-        return None
+    for i in range(1, len(df_particle)):
+        dx = df_particle["x"].iloc[i] - df_particle["x"].iloc[i - 1]
+        dy = df_particle["y"].iloc[i] - df_particle["y"].iloc[i - 1]
 
-    # Padronizar tamanho (usar min_length comum)
-    min_len = min(len(tr) for tr in trajetorias)
-    trajs_cut = [tr[:min_len] for tr in trajetorias]
+        if dx > L / 2:
+            dx -= L
+        elif dx < -L / 2:
+            dx += L
 
-    # Empilhar partículas em um único array: (Nsteps, Npart*2)
-    big_traj = np.hstack(trajs_cut)  # concatena colunas
-    tr = Trajectory(big_traj)
-    msd = tr.msd_ensemble_averaged_(maxtau=MAX_TAU)
+        if dy > L / 2:
+            dy -= L
+        elif dy < -L / 2:
+            dy += L
 
-    taus = np.arange(1, len(msd) + 1)
-    df_out = pd.DataFrame({"tau": taus, "msd": msd})
-    out_csv = OUT_DIR / f"{arq.stem}_EAmsd.csv"
-    df_out.to_csv(out_csv, index=False, float_format="%.6f")
-    print(f"[OK] Salvo: {out_csv}")
-    return out_csv
+        x_unwrapped.append(x_unwrapped[-1] + dx)
+        y_unwrapped.append(y_unwrapped[-1] + dy)
 
-# ================= Main =================
-def main():
-    arquivos = sorted(BASE_ROOT.rglob(PATTERN))
-    if not arquivos:
-        print("[ERRO] Nenhum arquivo encontrado!")
-        return
+    df_particle["x_unwrapped"] = x_unwrapped
+    df_particle["y_unwrapped"] = y_unwrapped
 
-    for arq in arquivos:
-        processar_arquivo(arq)
+    return df_particle
 
 if __name__ == "__main__":
-    main()
+    #logger.info("Starting ensemble MSD computation for all scenarios...")
+
+    for conc in CONCENTRACOES:
+        for obs in OBSTACULOS:
+            # Input directory
+            input_dir = BASE_ROOT / conc / obs
+            files = sorted(input_dir.glob(pattern))
+
+            if not files:
+                logger.warning(f"No trajectory files found in {input_dir}")
+                continue
+
+            # Output directory (mirror structure)
+            output_dir = OUT_DIR / conc / obs
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            for file_path in files:
+                #logger.info(f"Processing {file_path.name}...")
+
+                # Load trajectory data
+                df = load_trajectory(file_path)
+
+                # Time lags
+                tau_values = np.arange(1, df["timestep"].nunique())
+
+                msd_list = []
+
+                # Loop over particles
+                for pid, group in df.groupby("cell_id"):
+                    df_unwrapped = unwrap_trajectory(group, Lx)
+                    positions = df_unwrapped[["x_unwrapped", "y_unwrapped"]].values
+                    if len(positions) < min_traj_length:
+                        continue  # skip very short trajectories
+
+                    max_tau = min(len(positions), len(tau_values) + 1)
+                    msd_pid = Trajectory.msd_time_averaged_(
+                        positions, tau_values[:max_tau-1]
+                    )
+                    msd_list.append(msd_pid)
+
+                if not msd_list:
+                    logger.warning(f"No valid trajectories in {file_path}")
+                    continue
+
+                # Ensemble average
+                msd_array = np.vstack(msd_list)
+                msd_ensemble = msd_array.mean(axis=0)
+
+                # Save results
+                out_file = output_dir / f"{file_path.stem}_msd.csv"
+                df_out = pd.DataFrame({
+                    "tau": tau_values[:len(msd_ensemble)],
+                    "msd_ensemble": msd_ensemble
+                })
+                df_out.to_csv(out_file, index=False)
+                #logger.info(f"Saved MSD results to {out_file}")
