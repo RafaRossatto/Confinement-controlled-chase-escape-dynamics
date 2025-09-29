@@ -52,12 +52,12 @@ plt.xlabel(r"$\phi$", fontsize=22)
 plt.ylabel(r"$\tau$", fontsize=22)
 plt.xticks(fontsize=14)
 plt.yticks(fontsize=14)
-plt.grid(axis="y", linestyle="--", alpha=0.3)
+plt.grid(alpha=0.3)
 plt.legend(fontsize=14)
 plt.tight_layout()
 
 # salvar
-out_file = OUT_DIR / "tau_vs_phi_linha.pdf"
+out_file = OUT_DIR / "tau_vs_phi.pdf"
 plt.savefig(out_file, bbox_inches="tight")
 plt.show()
 

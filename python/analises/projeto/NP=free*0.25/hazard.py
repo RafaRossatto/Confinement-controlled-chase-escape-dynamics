@@ -37,6 +37,11 @@ FRAC_DIR = BASE_ROOT / FRAC_C
 OUT_DIR = BASE_ROOT / "resultados_modelos" / "hazard"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# --- Configuração global de fonte nos eixos e legenda ---
+plt.rcParams.update({
+"xtick.labelsize": 12,
+"ytick.labelsize": 12,
+"legend.fontsize": 10})
 
 # -------------------------------
 # 1. Funções do Modelo
@@ -99,15 +104,15 @@ def analyze_one_obs(data_dir, tag,obs_name):
 
     # Kaplan–Meier com legenda correta
     kmf.plot_survival_function(ax=axes[0], ci_show=True, label=legenda)
-    axes[0].set_ylabel("S(t)")
-    axes[0].set_xlabel("steps")
+    axes[0].set_ylabel("S(t)",fontsize=18)
+    axes[0].set_xlabel("steps",fontsize=18)
     axes[0].grid(True, alpha=0.3)
     axes[0].legend()
 
     # Hazard com legenda correta
     naf.plot_hazard(ax=axes[1], bandwidth=5, ci_show=True, label=legenda)
-    axes[1].set_ylabel("h(t)")
-    axes[1].set_xlabel("steps")
+    axes[1].set_ylabel("h(t)",fontsize=18)
+    axes[1].set_xlabel("steps",fontsize=18)
     axes[1].grid(True, alpha=0.3)
     axes[1].legend()
     plt.tight_layout()
@@ -155,8 +160,8 @@ def analyze_one_obs(data_dir, tag,obs_name):
                 label=f'A = {sobrevivencia_inicial:.3f}')
     plt.axhline(y=C, color='purple', linestyle='--', alpha=0.7, 
                 label=f'C = {C:.3f}')
-    plt.xlabel('steps')
-    plt.ylabel('S(t)')
+    plt.xlabel('steps',fontsize=22)
+    plt.ylabel('S(t)',fontsize=22)
     plt.legend(); plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(OUT_DIR / f"{tag}_fit_hazard_x_t.pdf", bbox_inches="tight")

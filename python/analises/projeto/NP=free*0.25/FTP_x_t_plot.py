@@ -20,6 +20,11 @@ cmap = colormaps.get_cmap("flag")
 L = 128
 area_total = L * L
 
+    # --- Configuração global de fonte nos eixos e legenda ---
+plt.rcParams.update({
+"xtick.labelsize": 16,
+"ytick.labelsize": 16,
+"legend.fontsize": 14})
 # ---------------------- Agrupar por obstáculo ----------------------
 csv_files = list(IN_DIR.glob("*.csv"))
 obs_groups = {}
@@ -66,10 +71,11 @@ for obs_tag, files in obs_groups.items():
         found_any = True
 
     if found_any:
-        plt.title(fr"$\phi$={phi}")
-        plt.xlabel("timestep")
-        plt.ylabel("FTP - Density")
+        plt.title(fr"$\phi$={phi}",fontsize=20)
+        plt.xlabel("timestep",fontsize=22)
+        plt.ylabel("Density",fontsize=22)
         plt.legend()
+        plt.grid(alpha=0.3)
         plt.tight_layout()
         out_file = OUT_DIR / f"{obs_tag}_FTP_kde_comparativo.pdf"
         plt.savefig(out_file)
@@ -85,8 +91,9 @@ for obs_tag, files in obs_groups.items():
         plt.figure(figsize=(8, 5))
         sns.kdeplot(x=df["ftp"], bw_adjust=1.0, fill=True, lw=2)
         plt.title(fr"FTP - {obs_tag}, {base_tag} ($\phi$={phi})")
-        plt.xlabel("timestep")
-        plt.ylabel("Density")
+        plt.xlabel("timestep",fontsize=22)
+        plt.ylabel("Density",fontsize=22)
+        plt.grid(alpha=0.3)
         plt.tight_layout()
         out_file = OUT_DIR / f"{obs_tag}_{base_tag}_FTP_kde.pdf"
         plt.savefig(out_file)

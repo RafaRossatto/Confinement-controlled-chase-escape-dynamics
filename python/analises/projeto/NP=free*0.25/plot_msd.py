@@ -78,9 +78,9 @@ def plot_random_curves(agent_density: float, obs_tag: str, n_curves: int = 5,
 
 # -------- Run example --------
 if __name__ == "__main__":
-    n_curves=1
-    obs_tag="s_obs_6553"
-    agent_density=0.5
-    vline_x=20
+    n_curves=100
+    obs_tag="s_obs_13107" #00, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107
+    agent_density=1.0
+    vline_x=11
     loglog = True
     plot_random_curves(agent_density, obs_tag, n_curves,loglog,vline_x)

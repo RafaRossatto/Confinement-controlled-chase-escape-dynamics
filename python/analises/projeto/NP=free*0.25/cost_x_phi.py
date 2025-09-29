@@ -38,6 +38,12 @@ class Config:
     LEGEND_FRAME = True
     LEGEND_LOCATION = "upper left"
 
+    # --- Configuração global de fonte nos eixos e legenda ---
+    plt.rcParams.update({
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14})
+
 config = Config()
 
 # ---------------------- Funções auxiliares ----------------------
@@ -156,9 +162,8 @@ def plot_custo(df, out_dir: Path):
     ax.set_xticks(tick_positions)
     ax.set_xticklabels([f"{phi:.2f}" for phi in phi_labels])
     ax.tick_params(axis="x", which="both", length=0)
-    ax.set_xlabel(r"$\phi$")
-    ax.set_ylabel(r"$c = \frac{N^C_0}{N^E_0}\,\tilde{TT}$")
-    ax.set_title("cost vs. $\phi$")
+    ax.set_xlabel(r"$\phi$",fontsize=22)
+    ax.set_ylabel("c",fontsize=22)
 
     if config.LOG_SCALE:
         ax.set_yscale("log")

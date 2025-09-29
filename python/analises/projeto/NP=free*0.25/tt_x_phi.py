@@ -59,6 +59,13 @@ class Config:
     INSET_Y_RANGE = (1000, 1200)  # Faixa Y para o inset
     INSET_PHI_RANGE = (0.65, 0.8)  # Faixa φ para o inset
 
+        # --- Configuração global de fonte nos eixos e legenda ---
+    plt.rcParams.update({
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14})
+
+
 config = Config()
 OUT_DIR = config.BASE_ROOT / "resultados_modelos" / "zeros_escapers"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -376,11 +383,11 @@ def main():
     ax.set_xticks(tick_positions)
     ax.set_xticklabels([f"{phi:.2f}" for phi in phi_labels], rotation=0)
     ax.tick_params(axis='x', which='both', length=0)
-    ax.set_xlabel(r"$\phi$")
+    ax.set_xlabel(r"$\phi$",fontsize=22)
     
     if config.LOG_SCALE:
         ax.set_yscale('log')
-        ax.set_ylabel(r"$TT$")
+        ax.set_ylabel(r"$TT$",fontsize=22)
         ax.set_ylim(config.Y_LIM_LOG[0], config.Y_LIM_LOG[1])
         ax.set_xlim(config.X_LIM[0], config.X_LIM[1])
     else:
