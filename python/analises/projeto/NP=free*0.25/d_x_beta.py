@@ -105,7 +105,8 @@ for NC_TAG, LABEL_TEX in SCENARIOS:
     cbar.ax.axhline(VCENTER, color="k", lw=1)
     cbar.set_ticks([VMIN, VCENTER, VMAX])
     cbar.set_ticklabels([f"{VMIN:.2f}", f"{VCENTER:.2f}", f"{VMAX:.2f}"])
-    plt.ylim(1.3, 3.1)  
+    plt.ylim(1.3, 3.1)
+    plt.xlim(0.65, 1.20)   
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 

@@ -76,6 +76,7 @@ for obs_tag, files in obs_groups.items():
         plt.ylabel("Density",fontsize=22)
         plt.legend()
         plt.grid(alpha=0.3)
+        plt.ylim(0, 1.8)
         plt.tight_layout()
         out_file = OUT_DIR / f"{obs_tag}_FTP_kde_comparativo.pdf"
         plt.savefig(out_file)
@@ -94,6 +95,7 @@ for obs_tag, files in obs_groups.items():
         plt.xlabel("timestep",fontsize=22)
         plt.ylabel("Density",fontsize=22)
         plt.grid(alpha=0.3)
+        plt.ylim(0, 1.8)
         plt.tight_layout()
         out_file = OUT_DIR / f"{obs_tag}_{base_tag}_FTP_kde.pdf"
         plt.savefig(out_file)
