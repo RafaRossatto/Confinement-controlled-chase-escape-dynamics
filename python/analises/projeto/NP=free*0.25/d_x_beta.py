@@ -83,6 +83,17 @@ for NC_TAG, LABEL_TEX in SCENARIOS:
         s=80, edgecolor="k", linewidth=0.4, zorder=3, label=LABEL_TEX
     )
 
+    # marcador em phi ~ 0.60
+    target_phi = 0.60
+    nearest_idx = (df["phi"] - target_phi).abs().idxmin()
+    tau_060 = df.loc[nearest_idx, "beta"]
+    d_060   = df.loc[nearest_idx, "d_mean"]
+
+    plt.scatter(
+        tau_060, d_060,
+        marker="*", s=300, color="gold", edgecolor="k",
+        zorder=4, label=r"$\phi \approx 0.60$"
+    )
 
     plt.xlabel(r"$\beta$", fontsize=22)
     plt.ylabel(r"$\langle d \rangle$", fontsize=22)
@@ -94,9 +105,10 @@ for NC_TAG, LABEL_TEX in SCENARIOS:
     cbar.ax.axhline(VCENTER, color="k", lw=1)
     cbar.set_ticks([VMIN, VCENTER, VMAX])
     cbar.set_ticklabels([f"{VMIN:.2f}", f"{VCENTER:.2f}", f"{VMAX:.2f}"])
-
+    plt.ylim(1.3, 3.1)  
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
+
 
     # salvar
     out_file = OUT_DIR / f"beta_vs_d_{NC_TAG}.pdf"

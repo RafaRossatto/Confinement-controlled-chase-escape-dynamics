@@ -11,7 +11,7 @@ from pathlib import Path
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
 
 # Fração de caçadores (escolha uma)
-FRAC_C = "Nc=Np*0.8"
+FRAC_C = "Nc=Np"
 
 # -------- Lista de Obstáculos para Processar --------
 OBSTACULOS = [
@@ -118,6 +118,25 @@ def analyze_one_obs(data_dir, tag,obs_name):
     plt.tight_layout()
     plt.savefig(OUT_DIR / f"{tag}_hazard_x_t.pdf", bbox_inches="tight")
     plt.close()
+        # -------------------------------
+    # -------------------------------
+    # Salvar h(t) + intervalos em CSV
+    # -------------------------------
+    hazard_df = naf.smoothed_hazard_(bandwidth=5)
+    ci_df = naf.smoothed_hazard_confidence_intervals_(bandwidth=5)
+
+    # combinar em um único dataframe
+    hazard_all = pd.concat([hazard_df, ci_df], axis=1).reset_index()
+    hazard_all = hazard_all.rename(columns={
+        "index": "step",
+        "differenced-NA_estimate": "h(t)",
+        "NA_estimate_lower_0.95": "h(t)-",
+        "NA_estimate_upper_0.95": "h(t)+"
+    })
+
+    hazard_out = OUT_DIR / f"{tag}_hazard_data.csv"
+    hazard_all.to_csv(hazard_out, index=False)
+    print(f"[OK] Hazard + CI salvo em {hazard_out}")
     
     # Fit
     km_time = kmf.survival_function_.index.values

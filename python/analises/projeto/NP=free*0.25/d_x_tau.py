@@ -84,7 +84,18 @@ for NC_TAG, LABEL_TEX in SCENARIOS:
         s=80, edgecolor="k", linewidth=0.4, zorder=3, label=LABEL_TEX
     )
 
- 
+    # marcador em phi ~ 0.60
+    target_phi = 0.60
+    nearest_idx = (df["phi"] - target_phi).abs().idxmin()
+    tau_060 = df.loc[nearest_idx, "tau"]
+    d_060   = df.loc[nearest_idx, "d_mean"]
+
+    plt.scatter(
+        tau_060, d_060,
+        marker="*", s=300, color="gold", edgecolor="k",
+        zorder=5, label=r"$\phi \approx 0.60$"
+    )
+
     plt.xlabel(r"$\tau$", fontsize=22)
     plt.ylabel(r"$\langle d \rangle$", fontsize=22)
     plt.title(LABEL_TEX, fontsize=18)
@@ -95,7 +106,8 @@ for NC_TAG, LABEL_TEX in SCENARIOS:
     cbar.ax.axhline(VCENTER, color="k", lw=1)
     cbar.set_ticks([VMIN, VCENTER, VMAX])
     cbar.set_ticklabels([f"{VMIN:.2f}", f"{VCENTER:.2f}", f"{VMAX:.2f}"])
-
+    # limitar eixo y
+    plt.ylim(1.3, 3.1)   
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
