@@ -23,7 +23,12 @@ class Config:
     OUT_DIR = BASE_ROOT / "resultados_modelos" / "zeros_escapers"
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    BASES = ["Nc=Np*0.5", "Nc=Np*0.8", "Nc=Np"]
+    # ALTERAÇÃO AQUI: Labels no mesmo estilo do primeiro programa
+    BASES = [
+        (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
+        (r"$N^{C}_{0}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
+        (r"$N^{C}_{0}=N^{E}_{0}$",      "Nc=Np"),
+    ]
 
     PLOT_PARAMS = {
         "cmap_name": "flag",
@@ -40,8 +45,8 @@ class Config:
 
     # --- Configuração global de fonte nos eixos e legenda ---
     plt.rcParams.update({
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14,
     "legend.fontsize": 14})
 
 config = Config()
@@ -93,7 +98,7 @@ def add_phi_separators_and_span(ax, phi_sorted, tick_positions):
                             phi_sorted, tick_positions)
         ax.axvspan(x_phi60 - 0.5, x_phi60 + 0.5,
                    color="red", alpha=0.2,
-                   label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
+                   label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.1f}$")
 
 # ---------------------- Calcular custos ----------------------
 def calcular_custos(base_root: Path, ne: int = 2048):
@@ -103,18 +108,23 @@ def calcular_custos(base_root: Path, ne: int = 2048):
         steps = grupo["steps_run"].values
         if len(steps) == 0:
             continue
-        if cenario == "Nc=Np*0.5":
+        
+        # ALTERAÇÃO AQUI: Adaptado para trabalhar com a nova estrutura de BASES
+        cenario_tag = cenario  # "Nc=Np*0.5", "Nc=Np*0.8", "Nc=Np"
+        if cenario_tag == "Nc=Np*0.5":
             nc = int(0.5 * ne)
-        elif cenario == "Nc=Np*0.8":
+        elif cenario_tag == "Nc=Np*0.8":
             nc = int(0.8 * ne)
-        elif cenario == "Nc=Np":
+        elif cenario_tag == "Nc=Np":
             nc = int(ne)
         else:
             continue
+            
         custos = (nc / ne) * steps
         for custo in custos:
             resultados.append({
-                "cenario": cenario,
+                "cenario": cenario_tag,  # Mantém o tag para agrupamento
+                "cenario_label": next((label for label, tag in config.BASES if tag == cenario_tag), cenario_tag),
                 "phi": phi,
                 "Nc": nc,
                 "Ne": ne,
@@ -129,15 +139,19 @@ def plot_custo(df, out_dir: Path):
     fig, ax = plt.subplots(figsize=(12, 6), dpi=150)
     cmap = colormaps.get_cmap(config.PLOT_PARAMS["cmap_name"])
 
-    ordem = config.BASES
+    # ALTERAÇÃO AQUI: Usa a estrutura (label, tag) para ordem
+    ordem = [tag for label, tag in config.BASES]  # ["Nc=Np*0.5", "Nc=Np*0.8", "Nc=Np"]
     phi_labels = sorted(df["phi"].unique())
     tick_positions = np.arange(len(phi_labels))
     offsets = symmetric_offsets(len(ordem), config.PLOT_PARAMS["offset_delta"])
 
-    for idx, cenario in enumerate(ordem):
+    for idx, cenario_tag in enumerate(ordem):
+        # ALTERAÇÃO AQUI: Pega o label formatado correspondente ao tag
+        cenario_label = next((label for label, tag in config.BASES if tag == cenario_tag), cenario_tag)
+        
         grupos, pos_idx = [], []
         for phi in phi_labels:
-            grupo = df[(df["cenario"] == cenario) & (df["phi"] == phi)]
+            grupo = df[(df["cenario"] == cenario_tag) & (df["phi"] == phi)]
             if grupo.empty:
                 continue
             grupos.append(grupo["custo"].values)
@@ -157,13 +171,14 @@ def plot_custo(df, out_dir: Path):
             flierprops=dict(marker="o", markersize=3, alpha=0.4,
                             markerfacecolor=cmap(idx), markeredgecolor="none")
         )
-        ax.plot([], [], color=cmap(idx), label=cenario, linewidth=3)
+        # ALTERAÇÃO AQUI: Usa o label formatado em LaTeX
+        ax.plot([], [], color=cmap(idx), label=cenario_label, linewidth=3)
 
     ax.set_xticks(tick_positions)
-    ax.set_xticklabels([f"{phi:.2f}" for phi in phi_labels])
+    ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels])
     ax.tick_params(axis="x", which="both", length=0)
-    ax.set_xlabel(r"$\phi$",fontsize=22)
-    ax.set_ylabel("c",fontsize=22)
+    ax.set_xlabel(r"$\phi$",fontsize=18)
+    ax.set_ylabel(r"$c_{0}$",fontsize=18)
 
     if config.LOG_SCALE:
         ax.set_yscale("log")

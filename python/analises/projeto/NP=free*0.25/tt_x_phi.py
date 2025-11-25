@@ -61,8 +61,8 @@ class Config:
 
         # --- Configuração global de fonte nos eixos e legenda ---
     plt.rcParams.update({
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14,
     "legend.fontsize": 14})
 
 
@@ -254,7 +254,7 @@ def put_phi60_first_in_legend(ax):
         return
     
     linha60, outros = [], []
-    special_label = rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$"
+    special_label = rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.1f}$"
     
     for h, l in zip(handles, labels):
         if special_label in l:
@@ -381,13 +381,13 @@ def main():
     
     # Eixos
     ax.set_xticks(tick_positions)
-    ax.set_xticklabels([f"{phi:.2f}" for phi in phi_labels], rotation=0)
+    ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels], rotation=0)
     ax.tick_params(axis='x', which='both', length=0)
-    ax.set_xlabel(r"$\phi$",fontsize=22)
+    ax.set_xlabel(r"$\phi$",fontsize=18)
     
     if config.LOG_SCALE:
         ax.set_yscale('log')
-        ax.set_ylabel(r"$TT$",fontsize=22)
+        ax.set_ylabel(r"$TT$",fontsize=18)
         ax.set_ylim(config.Y_LIM_LOG[0], config.Y_LIM_LOG[1])
         ax.set_xlim(config.X_LIM[0], config.X_LIM[1])
     else:

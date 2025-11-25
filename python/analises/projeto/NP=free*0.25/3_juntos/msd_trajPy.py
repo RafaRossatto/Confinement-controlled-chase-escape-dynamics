@@ -12,39 +12,44 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# -------- General Configurations --------
-BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
-pattern = "*_hunter_trajectories.csv"
-Lx = Ly = 128
-min_traj_length = 5
-
-# Output
-OUT_DIR = BASE_ROOT / "resultados_modelos" / "msd_trajPy"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
-
-# Concentrations
-CONCENTRACOES = ["Nc=Np"]#$, "Nc=Np*0.8", "Nc=Np"]
-
-# Obstacles
-OBSTACULOS = [
-    "s_obs_00", "s_obs_1638", "s_obs_3276", "s_obs_4915",
-    "s_obs_6553", "s_obs_8192","s_obs_9666", "s_obs_9830", "s_obs_9994",
-    "s_obs_11468", "s_obs_13107"
+# ---------------------- CONFIGURAÇÕES PRINCIPAIS ----------------------
+# Diferentes tamanhos de rede - ⬅️ ALTERE OS CAMINHOS AQUI
+REDE_CONFIGS = [
+    #(64,  "L_64",  Path.home() / "Dados_Doc/Np=free*0.25/L_64"),    # ⬅️ ALTERE AQUI
+    (128, "L_128", Path.home() / "Dados_Doc/Np=free*0.25/L_128"),   # ⬅️ ALTERE AQUI  
+    #(256, "L_256", Path.home() / "Dados_Doc/Np=free*0.25/L_256")    # ⬅️ ALTERE AQUI
 ]
 
-# ---------------------- Load file into DataFrame -------------------
+# Apenas a proporção 0.5
+FRAC_C = "Nc=Np*0.5"
+
+# Lista de obstáculos para cada tamanho de rede (ajuste conforme necessário)
+OBS_TEMPLATES = {
+    #64: ["s_obs_00", "s_obs_409", "s_obs_819", "s_obs_1228", "s_obs_1638", "s_obs_2048","s_obs_2416",
+    # "s_obs_2457","s_obs_2498","s_obs_2867","s_obs_3276"],
+    128: ["s_obs_00", "s_obs_1638", "s_obs_3276", "s_obs_4915", "s_obs_6553", "s_obs_8192", "s_obs_9666",
+    "s_obs_9830", "s_obs_9994", "s_obs_11468", "s_obs_13107"],
+    #256: ["s_obs_00", "s_obs_6553", "s_obs_13107", "s_obs_19660", "s_obs_26214", "s_obs_32768", "s_obs_38666",
+    #"s_obs_39321", "s_obs_39976", "s_obs_45875", "s_obs_52428"]  # exemplo
+    #256: ["s_obs_32768", "s_obs_38666","s_obs_39321", "s_obs_39976", "s_obs_45875", "s_obs_52428"]
+}
+
+pattern = "*_hunter_trajectories.csv"
+min_traj_length = 5
+
+# Output principal
+OUT_BASE = Path.home() / "Dados_Doc" / "resultados_modelos" / "msd_trajPy_multiple_L"
+OUT_BASE.mkdir(parents=True, exist_ok=True)
+
+# ---------------------- Funções (mantidas) -------------------
 def load_trajectory(file_path: Path) -> pd.DataFrame:
     try:
         df = pd.read_csv(file_path)
-        #logger.info(f"File loaded successfully: {file_path.name}")
-        #logger.info(f"DataFrame shape: {df.shape}")
-        #logger.info(f"Columns detected: {list(df.columns)}")
         return df
     except Exception as e:
         logger.error(f"Failed to load file {file_path.name}: {e}")
         raise
 
-# ---------------------- Unwrap function -----------------------------
 def unwrap_trajectory(df_particle: pd.DataFrame, L: int) -> pd.DataFrame:
     df_particle = df_particle.sort_values("timestep").copy()
 
@@ -73,25 +78,38 @@ def unwrap_trajectory(df_particle: pd.DataFrame, L: int) -> pd.DataFrame:
 
     return df_particle
 
+# ---------------------- Pipeline principal -------------------
 if __name__ == "__main__":
-    #logger.info("Starting ensemble MSD computation for all scenarios...")
+    logger.info("Starting ensemble MSD computation for multiple network sizes...")
 
-    for conc in CONCENTRACOES:
-        for obs in OBSTACULOS:
-            # Input directory
-            input_dir = BASE_ROOT / conc / obs
+    for L, rede_nome, base_path in REDE_CONFIGS:
+        # Verifica se a pasta existe
+        if not base_path.exists():
+            logger.error(f"Pasta não encontrada: {base_path}")
+            logger.error("Por favor, ajuste os caminhos em REDE_CONFIGS")
+            continue
+            
+        logger.info(f"🎯 Processando rede: {rede_nome} (L={L})")
+        logger.info(f"📁 Caminho: {base_path}")
+
+        # Lista de obstáculos para este L
+        obs_list = OBS_TEMPLATES.get(L, [f"s_obs_{i}" for i in range(0, L**2, L**2//8)])
+
+        for obs in obs_list:
+            # Input directory - estrutura: base_path / FRAC_C / obs
+            input_dir = base_path / FRAC_C / obs
             files = sorted(input_dir.glob(pattern))
 
             if not files:
                 logger.warning(f"No trajectory files found in {input_dir}")
                 continue
 
-            # Output directory (mirror structure)
-            output_dir = OUT_DIR / conc / obs
+            # Output directory - estrutura: OUT_BASE / rede_nome / FRAC_C / obs
+            output_dir = OUT_BASE / rede_nome / FRAC_C / obs
             output_dir.mkdir(parents=True, exist_ok=True)
 
             for file_path in files:
-                #logger.info(f"Processing {file_path.name}...")
+                logger.info(f"Processing {file_path.name}...")
 
                 # Load trajectory data
                 df = load_trajectory(file_path)
@@ -103,7 +121,7 @@ if __name__ == "__main__":
 
                 # Loop over particles
                 for pid, group in df.groupby("cell_id"):
-                    df_unwrapped = unwrap_trajectory(group, Lx)
+                    df_unwrapped = unwrap_trajectory(group, L)  # ⚠️ Usa L da rede atual
                     positions = df_unwrapped[["x_unwrapped", "y_unwrapped"]].values
                     if len(positions) < min_traj_length:
                         continue  # skip very short trajectories
@@ -129,4 +147,6 @@ if __name__ == "__main__":
                     "msd_ensemble": msd_ensemble
                 })
                 df_out.to_csv(out_file, index=False)
-                #logger.info(f"Saved MSD results to {out_file}")
+                logger.info(f"Saved MSD results to {out_file}")
+
+    logger.info("✅ Processamento concluído para todas as redes!")

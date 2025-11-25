@@ -7,8 +7,8 @@ from matplotlib import colormaps
 L = 128
 AREA = L**2
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
-HAZARD_DIR = BASE_ROOT / "resultados_modelos" / "hazard"
-OUT_DIR = BASE_ROOT / "resultados_modelos" / "beta_x_phi"
+HAZARD_DIR = BASE_ROOT /"L_128"/ "resultados_modelos" / "hazard"
+OUT_DIR = BASE_ROOT /"L_128"/"resultados_modelos" / "beta_x_phi"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 bases = [
@@ -49,13 +49,13 @@ for idx, (label_tex, nc_tag) in enumerate(bases):
 
 # ---------------------- decoração ----------------------
 plt.axvline(x=0.60, color="black", linestyle="--", linewidth=1.5,
-            label=r"$\phi = 0.60$")
+            label=r"$\phi = 0.6$")
 
-plt.xlabel(r"$\phi$", fontsize=22)
-plt.ylabel(r"$\beta$", fontsize=22)
+plt.xlabel(r"$\phi$", fontsize=18)
+plt.ylabel(r"$ \langle \beta \rangle $", fontsize=18)
 plt.xticks(fontsize=14)
 plt.yticks(fontsize=14)
-plt.grid(axis="y", linestyle="--", alpha=0.3)
+plt.grid(alpha=0.3)
 plt.legend(fontsize=14)
 plt.tight_layout()
 

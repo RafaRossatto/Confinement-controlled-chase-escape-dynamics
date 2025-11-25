@@ -14,14 +14,17 @@ from networkx.algorithms.shortest_paths.weighted import multi_source_dijkstra_pa
 
 # --- Configuração global de fonte nos eixos e legenda ---
 plt.rcParams.update({
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14,
     "legend.fontsize": 14
 })
 
 # ---------------------- parâmetros principais ----------------------
 obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
-            "obs_8192", "obs_9830", "obs_11468", "obs_13107"]
+            "obs_8192","obs_9666", "obs_9830","obs_9994", "obs_11468", "obs_13107"]
+
+#obs_list = ["obs_00", "obs_409", "obs_819", "obs_1228", "obs_1638",
+ #           "obs_2048", "obs_2457", "obs_2867", "obs_3276"]
 
 bases = [
     (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
@@ -32,7 +35,7 @@ bases = [
 L = 128
 AREA = L**2
 NUM_RUNS = 100
-BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
 
 # flags
 USE_PBC = True                     # Condição periódica de contorno
@@ -102,7 +105,7 @@ def grafo_livre(L: int, obst_set: set, pbc: bool) -> nx.Graph:
 def NE0(num_obs: int) -> float:
     """N_E0 = metade dos sítios livres após obstáculos."""
     livres = AREA - num_obs
-    return livres / 2.0  # CORRIGIDO (antes /4.0)
+    return livres / 4.0  # CORRIGIDO (antes /4.0)
 
 def densidade_obs(num_obs: int) -> float:
     return num_obs / AREA
@@ -261,8 +264,8 @@ def main():
     plt.axvline(x=0.60, color='black', linestyle='--', linewidth=1.5,
                 label=r'$\phi_{c} = 0.60$')
 
-    plt.xlabel(r"$\phi$", fontsize=22)
-    plt.ylabel(r"$N^{E}_{\text{inacc}}/N^{E}_{0}$" , fontsize=20)
+    plt.xlabel(r"$\phi$", fontsize=18)
+    plt.ylabel(r"$\langle N^{E}_{\text{inacc}} \rangle /N^{E}_{0}$" , fontsize=18)
 
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.legend()

@@ -4,12 +4,12 @@ import random
 from pathlib import Path
 
 # -------- Config --------
-BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
 MSD_DIR = BASE_ROOT / "resultados_modelos" / "msd_trajPy"
 
 OBSTACULOS = [
     "s_obs_00", "s_obs_1638", "s_obs_3276",
-    "s_obs_4915", "s_obs_6553", "s_obs_8192",
+    "s_obs_4915", "s_obs_6553", "s_obs_8192","s_obs_9666","s_obs_9994"
     "s_obs_9830", "s_obs_11468", "s_obs_13107"
 ]
 
@@ -81,6 +81,6 @@ if __name__ == "__main__":
     n_curves=100
     obs_tag="s_obs_13107" #00, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107
     agent_density=1.0
-    vline_x=11
+    vline_x=6
     loglog = True
     plot_random_curves(agent_density, obs_tag, n_curves,loglog,vline_x)
