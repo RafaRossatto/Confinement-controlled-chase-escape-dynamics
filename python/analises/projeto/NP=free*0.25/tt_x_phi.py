@@ -30,9 +30,9 @@ class Config:
     BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
     
     BASES = [
-        (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
-        (r"$N^{C}_{0}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
-        (r"$N^{C}_{0}=N^{E}_{0}$", "Nc=Np"),
+        (r"$N^{C}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
+        (r"$N^{C}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
+        (r"$N^{C}=N^{E}_{0}$", "Nc=Np"),
     ]
     
     PLOT_PARAMS = {

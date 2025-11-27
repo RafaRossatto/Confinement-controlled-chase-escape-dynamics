@@ -12,9 +12,9 @@ OUT_DIR = BASE_ROOT /"L_128"/"resultados_modelos" / "beta_x_phi"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 bases = [
-    (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
-    (r"$N^{C}_{0}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
-    (r"$N^{C}_{0}=N^{E}_{0}$",      "Nc=Np"),
+    (r"$N^{C}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
+    (r"$N^{C}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
+    (r"$N^{C}=N^{E}_{0}$",      "Nc=Np"),
 ]
 
 # ---------------------- plot ----------------------

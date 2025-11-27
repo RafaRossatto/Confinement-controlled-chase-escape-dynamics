@@ -18,9 +18,9 @@ cmap = colormaps.get_cmap("flag")
 
 # ALTERAÇÃO AQUI: Labels no mesmo estilo do primeiro programa
 BASES = [
-    (r"$N^{C}_{0}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
-    (r"$N^{C}_{0}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
-    (r"$N^{C}_{0}=N^{E}_{0}$",      "Nc=Np"),
+    (r"$N^{C}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
+    (r"$N^{C}=0.8\,N^{E}_{0}$", "Nc=Np*0.8"),
+    (r"$N^{C}=N^{E}_{0}$",      "Nc=Np"),
 ]
 
 # Ler resultados
