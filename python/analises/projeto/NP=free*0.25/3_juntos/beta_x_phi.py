@@ -65,7 +65,7 @@ for idx, (L, rede_nome, base_path) in enumerate(REDE_CONFIGS):
 
 # ---------------------- DECORAÇÃO ----------------------
 plt.axvline(x=0.60, color="black", linestyle="--", linewidth=1.5,
-            label=r"$\phi_c = 0.6$")
+            label=r"$\phi_c = 0.60$")
 
 plt.xlabel(r"$\phi$", fontsize=18)
 plt.ylabel(r"$\langle \beta \rangle$", fontsize=18)
@@ -116,7 +116,7 @@ for idx, (L, rede_nome, base_path) in enumerate(REDE_CONFIGS):
     )
 
 plt.axvline(x=0.60, color="black", linestyle="--", linewidth=1.5,
-            label=r"$\phi_c = 0.6$")
+            label=r"$\phi_c = 0.60$")
 
 plt.xlabel(r"$\phi$", fontsize=18)
 plt.ylabel(r"$\langle \tau \rangle$", fontsize=18)

@@ -291,10 +291,10 @@ def main():
             ax.errorbar(xs, ys, yerr=es, fmt="o-", ms=5, lw=1.6,
                         capsize=3, color=cmap(k), label=label_tex)
 
-        ax.axvline(PHI_LINE, color="black", linestyle="--", lw=1.5, label=fr"$\phi_c = {PHI_LINE:.1f}$")
+        ax.axvline(PHI_LINE, color="black", linestyle="--", lw=1.5, label=fr"$\phi_c = {PHI_LINE:.2f}$")
         ax.set_xlabel(r"$\phi$", fontsize=18)
         ax.set_ylabel(r"$\langle d \rangle$",fontsize=18)
-        ax.grid(True, linestyle="--", alpha=0.6)
+        ax.grid(True, linestyle="--", alpha=0.60)
         ax.legend(frameon=True)
         plt.tight_layout()
         fig_pdf = OUT_DIR / "dist_min_vs_phi.pdf"

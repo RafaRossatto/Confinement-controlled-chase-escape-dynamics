@@ -31,7 +31,6 @@ OBS_TEMPLATES = {
     "s_obs_9830", "s_obs_9994", "s_obs_11468", "s_obs_13107"],
     #256: ["s_obs_00", "s_obs_6553", "s_obs_13107", "s_obs_19660", "s_obs_26214", "s_obs_32768", "s_obs_38666",
     #"s_obs_39321", "s_obs_39976", "s_obs_45875", "s_obs_52428"]  # exemplo
-    #256: ["s_obs_32768", "s_obs_38666","s_obs_39321", "s_obs_39976", "s_obs_45875", "s_obs_52428"]
 }
 
 pattern = "*_hunter_trajectories.csv"

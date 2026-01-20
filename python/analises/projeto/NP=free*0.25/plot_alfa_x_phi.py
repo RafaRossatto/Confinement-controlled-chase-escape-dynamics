@@ -51,7 +51,7 @@ for idx, conc_tag in enumerate(ordem):
         label=conc_label  # ALTERAÇÃO AQUI: Usa o label formatado
     )
 
-plt.axvline(x=0.60, color="black", linestyle="--", linewidth=1.5, label=r"$\phi_c = 0.6$")
+plt.axvline(x=0.60, color="black", linestyle="--", linewidth=1.5, label=r"$\phi_c = 0.60$")
 plt.xlabel(r"$\phi$", fontsize=18)
 plt.ylabel(r"$ \langle \alpha \rangle$", fontsize=18)
 plt.legend()

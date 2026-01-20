@@ -64,13 +64,31 @@ def put_phi60_first_in_legend(ax):
     handles, labels = ax.get_legend_handles_labels()
     if not handles:
         return
+    
+    # ALTERAÇÃO: Usar o mesmo formato da faixa (0.6 em vez de 0.60)
+    phi_value = config.PLOT_PARAMS['phi_line_special']
+    # Duas possibilidades de formatação podem aparecer
+    possible_labels = [
+        rf"$\phi = {phi_value:.1f}$",    # Formato: φ = 0.6
+        rf"$\phi = {phi_value:.2f}$",    # Formato: φ = 0.60
+    ]
+    
     linha60, outros = [], []
-    special_label = rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$"
     for h, l in zip(handles, labels):
-        if special_label in l:
+        if any(label_pattern in l for label_pattern in possible_labels):
             linha60.append((h, l))
         else:
             outros.append((h, l))
+    
+    # ALTERAÇÃO: Se não encontrou φ=0.6, verificar se há outros formatos
+    if not linha60:
+        # Procurar por qualquer label que contenha "phi" ou "φ"
+        for h, l in zip(handles, labels):
+            if "phi" in l.lower() or "φ" in l or str(phi_value) in l:
+                linha60.append((h, l))
+            else:
+                outros.append((h, l))
+    
     new = linha60 + outros if linha60 else outros
     if new:
         new_handles, new_labels = zip(*new)
@@ -79,7 +97,8 @@ def put_phi60_first_in_legend(ax):
                   loc=config.LEGEND_LOCATION,
                   fancybox=True, framealpha=0.7,
                   edgecolor="grey", facecolor="white",
-                  fontsize=10)
+                  fontsize=10)  # Ou remove para usar 14 do rcParams
+
 
 def add_phi_separators_and_span(ax, phi_sorted, tick_positions):
     """Adiciona linhas verticais regulares e a faixa em φ=0.60."""
@@ -98,7 +117,7 @@ def add_phi_separators_and_span(ax, phi_sorted, tick_positions):
                             phi_sorted, tick_positions)
         ax.axvspan(x_phi60 - 0.5, x_phi60 + 0.5,
                    color="red", alpha=0.2,
-                   label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.1f}$")
+                   label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
 
 # ---------------------- Calcular custos ----------------------
 def calcular_custos(base_root: Path, ne: int = 2048):
@@ -178,7 +197,7 @@ def plot_custo(df, out_dir: Path):
     ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels])
     ax.tick_params(axis="x", which="both", length=0)
     ax.set_xlabel(r"$\phi$",fontsize=18)
-    ax.set_ylabel(r"$c_{0}$",fontsize=18)
+    ax.set_ylabel(r"$c$",fontsize=18)
 
     if config.LOG_SCALE:
         ax.set_yscale("log")
