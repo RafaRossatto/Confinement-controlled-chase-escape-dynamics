@@ -22,8 +22,10 @@ NOMES_LEGENDA = {
 
 # Lista de obstáculos
 OBS_LISTA = [
-    "ob00", "ob1638", "ob3276", "ob4915", "ob6553",
-    "ob8192", "ob9666", "ob9830", "ob9994", "ob11468", "ob13107"]
+    "ob00", "ob1638", "ob3276", "ob4915", "ob6553","ob8028",
+    "ob8192","ob8355", "ob9666", "ob9830", "ob9994", "ob11468", "ob13107"]
+
+#OBS_LISTA = ["ob8028","ob8355"]
 
 # Diretório de saída para os plots
 OUT_DIR = H_CUMULATIVO_DIR.parent / "plots_H_cumulativo"
@@ -57,6 +59,8 @@ def carregar_dados_H_cumulativo(frac_c, obs_name):
     
     if not caminho_arquivo.exists():
         print(f"  Arquivo não encontrado: {nome_arquivo}")
+        print(f"Caminho: {caminho_arquivo}")
+        input()
         return None
     
     try:
@@ -78,9 +82,9 @@ def carregar_dados_H_cumulativo(frac_c, obs_name):
                 'H(t)_lower_0.95': 'H(t)_lower',
                 'H(t)_upper_0.95': 'H(t)_upper'
             })
-            print(f"  🔄 Colunas de IC renomeadas")
+            print(f" Colunas de IC renomeadas")
         elif 'H(t)_lower_0.95' not in dados.columns and 'H(t)_upper_0.95' not in dados.columns:
-            print(f"  ⚠️  Colunas de IC não encontradas")
+            print(f" Colunas de IC não encontradas")
         
         # Ordenar por step
         dados = dados.sort_values('step').dropna()
@@ -212,7 +216,7 @@ def plotar_H_por_fracoes():
         
         # Mostrar estatísticas NORMALIZADAS
         if estatisticas_norm:
-            print(f"\n  📊 ESTATÍSTICAS H(t)/H(0) final:")
+            print(f"\n ESTATÍSTICAS H(t)/H(0) final:")
             print(f"    {'Frações':<20} | H(0)     | H(final)/H(0) | H(max)/H(0)")
             print(f"    {'-'*20} | {'-'*8} | {'-'*13} | {'-'*12}")
             for frac_c, H_final_norm, H_max_norm, H_0 in estatisticas_norm:

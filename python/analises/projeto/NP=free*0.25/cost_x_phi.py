@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 # ---------------------- Config ----------------------
 class Config:
-    BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
-    OUT_DIR = BASE_ROOT / "resultados_modelos" / "zeros_escapers"
+    BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25" / "L_128"
+    OUT_DIR = BASE_ROOT / "resultados_modelos" / "zeros_escapers"  # ← CORRIGIDO
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # ALTERAÇÃO AQUI: Labels no mesmo estilo do primeiro programa
@@ -39,7 +39,7 @@ class Config:
 
     LOG_SCALE = True
     Y_LIM_LOG = (3.9, 120)
-    X_LIM = (-0.5, 8.5)
+    X_LIM = (-0.5, 12.5)
     LEGEND_FRAME = True
     LEGEND_LOCATION = "upper left"
 
@@ -119,9 +119,29 @@ def add_phi_separators_and_span(ax, phi_sorted, tick_positions):
                    color="red", alpha=0.2,
                    label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
 
+def add_phi_separators_and_span(ax, phi_sorted, tick_positions):
+    """Adiciona linhas verticais ENTRE cada tick e a faixa em φ=0.60."""
+    phi_max = max(phi_sorted) if phi_sorted else 1.0
+    
+    # LINHAS ENTRE CADA PAR DE TICKS
+    for i in range(len(tick_positions) - 1):
+        # Posição exatamente no meio entre dois ticks consecutivos
+        x_sep = (tick_positions[i] + tick_positions[i + 1]) / 2
+        ax.axvline(x=x_sep, color="gray", linestyle=":", alpha=0.4, linewidth=0.8)
+    
+    # faixa em φ=0.60 - encontra o tick mais próximo
+    if config.PLOT_PARAMS["phi_line_special"] <= phi_max:
+        # Encontra o índice do valor de phi mais próximo de 0.60
+        idx_60 = min(range(len(phi_sorted)), key=lambda i: abs(phi_sorted[i] - 0.60))
+        x_phi60 = tick_positions[idx_60]
+        
+        ax.axvspan(x_phi60 - 0.5, x_phi60 + 0.5,
+                   color="red", alpha=0.2,
+                   label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
+
 # ---------------------- Calcular custos ----------------------
 def calcular_custos(base_root: Path, ne: int = 2048):
-    df = pd.read_csv(base_root / "steps_boxplot_runs_ALL__ALL.csv")
+    df = pd.read_csv(base_root / "steps_runs_ALL_ALL.csv")
     resultados = []
     for (cenario, phi), grupo in df.groupby(["cenario_tag", "phi"]):
         steps = grupo["steps_run"].values
@@ -194,7 +214,7 @@ def plot_custo(df, out_dir: Path):
         ax.plot([], [], color=cmap(idx), label=cenario_label, linewidth=3)
 
     ax.set_xticks(tick_positions)
-    ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels])
+    ax.set_xticklabels([f"{phi:.2f}" for phi in phi_labels])
     ax.tick_params(axis="x", which="both", length=0)
     ax.set_xlabel(r"$\phi$",fontsize=18)
     ax.set_ylabel(r"$c$",fontsize=18)

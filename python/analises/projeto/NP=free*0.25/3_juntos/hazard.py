@@ -23,9 +23,9 @@ FRAC_C = "Nc=Np*0.5"
 OBS_TEMPLATES = {
     64: ["s_obs_00", "s_obs_409", "s_obs_819", "s_obs_1228", "s_obs_1638", "s_obs_2048",
          "s_obs_2416", "s_obs_2457","s_obs_2498","s_obs_2867", "s_obs_3276"],
-    128: ["s_obs_00", "s_obs_1638", "s_obs_3276", "s_obs_4915", "s_obs_6553", "s_obs_8192", "s_obs_9666",
+    128: ["s_obs_00", "s_obs_1638", "s_obs_3276", "s_obs_4915", "s_obs_6553","s_obs_8028", "s_obs_8192","s_obs_8355", "s_obs_9666",
     "s_obs_9830", "s_obs_9994", "s_obs_11468", "s_obs_13107"],
-    256: ["s_obs_00", "s_obs_6553", "s_obs_13107", "s_obs_19660", "s_obs_26214", "s_obs_32768", "s_obs_38666",
+    256: ["s_obs_00", "s_obs_6553", "s_obs_13107", "s_obs_19660", "s_obs_26214","s_obs_32112", "s_obs_32768","s_obs_33423", "s_obs_38666",
     "s_obs_39321", "s_obs_39976", "s_obs_45875", "s_obs_52428"]  # exemplo
 }
 

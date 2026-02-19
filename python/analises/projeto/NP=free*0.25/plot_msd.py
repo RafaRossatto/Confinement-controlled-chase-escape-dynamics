@@ -5,7 +5,7 @@ from pathlib import Path
 
 # -------- Config --------
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
-MSD_DIR = BASE_ROOT / "resultados_modelos" / "msd_trajPy"
+MSD_DIR = BASE_ROOT / "resultados_modelos" /"paper_response"/ "msd_trajPy"
 
 OBSTACULOS = [
     "s_obs_00", "s_obs_1638", "s_obs_3276",
@@ -79,8 +79,8 @@ def plot_random_curves(agent_density: float, obs_tag: str, n_curves: int = 5,
 # -------- Run example --------
 if __name__ == "__main__":
     n_curves=100
-    obs_tag="s_obs_13107" #00, 1638, 3276, 4915, 6553, 8192, 9830, 11468, 13107
-    agent_density=1.0
-    vline_x=6
+    obs_tag="s_obs_8355" #00, 1638, 3276, 4915, 6553,8028, 8192,8355, 9830, 11468, 13107
+    agent_density=0.8
+    vline_x=13
     loglog = True
     plot_random_curves(agent_density, obs_tag, n_curves,loglog,vline_x)

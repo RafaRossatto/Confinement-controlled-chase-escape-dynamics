@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class Config:
     L = 128
     AREA = L**2
-    BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
+    BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
     
     BASES = [
         (r"$N^{C}=0.5\,N^{E}_{0}$", "Nc=Np*0.5"),
@@ -54,7 +54,7 @@ class Config:
     # Escala logarítmica apenas no gráfico principal
     LOG_SCALE = True
     Y_LIM_LOG = (7, 200)  # Começando em 1 na escala log
-    X_LIM = (-0.5, 8.5)  # Começando em 1 na escala log
+    X_LIM = (-0.5, 12.5)  # Começando em 1 na escala log
     # Configuração do inset
     INSET_Y_RANGE = (1000, 1200)  # Faixa Y para o inset
     INSET_PHI_RANGE = (0.65, 0.8)  # Faixa φ para o inset
@@ -230,22 +230,24 @@ def plot_kde_distribuicoes(dados_por_cenario, out_dir: Path):
 
 
 def add_phi_separators_and_phi60(ax, phi_sorted, tick_positions):
-    """Adiciona linhas verticais nos separadores de phi."""
+    """Adiciona linhas verticais ENTRE cada tick e uma faixa em φ=0.60."""
     phi_max = max(phi_sorted) if phi_sorted else 1.0
     
-    for phi_sep in np.arange(config.PLOT_PARAMS['phi_separators_start'], 
-                           min(config.PLOT_PARAMS['phi_separators_max'], phi_max) + 1e-12, 
-                           config.PLOT_PARAMS['phi_separators_step']):
-        if np.isclose(phi_sep, config.PLOT_PARAMS['phi_separators_max']):
-            continue
-        x_sep = np.interp(phi_sep, phi_sorted, tick_positions)
-        ax.axvline(x=x_sep, color="gray", linestyle="-", alpha=0.5, linewidth=1)
+    # LINHAS ENTRE CADA PAR DE TICKS
+    for i in range(len(tick_positions) - 1):
+        # Posição exatamente no meio entre dois ticks consecutivos
+        x_sep = (tick_positions[i] + tick_positions[i + 1]) / 2
+        ax.axvline(x=x_sep, color="gray", linestyle=":", alpha=0.4, linewidth=0.8)
     
-    # Linha especial
+    # faixa em φ=0.60 - encontra o tick mais próximo
     if config.PLOT_PARAMS['phi_line_special'] <= phi_max:
-        x_phi60 = np.interp(config.PLOT_PARAMS['phi_line_special'], phi_sorted, tick_positions)
-        ax.axvline(x=x_phi60, color="black", linestyle="--", linewidth=1.5, 
-                  label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
+        # Encontra o índice do valor de phi mais próximo de 0.60
+        idx_60 = min(range(len(phi_sorted)), key=lambda i: abs(phi_sorted[i] - 0.60))
+        x_phi60 = tick_positions[idx_60]
+        
+        ax.axvspan(x_phi60 - 0.5, x_phi60 + 0.5,
+                   color="red", alpha=0.2,
+                   label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
 
 def put_phi60_first_in_legend(ax):
     """Reorganiza a legenda para colocar phi=0.60 primeiro com quadro."""
@@ -275,27 +277,6 @@ def put_phi60_first_in_legend(ax):
                  edgecolor='grey',      # Cor da borda
                  facecolor='white',      # Cor de fundo
                  fontsize=10)            # Tamanho da fonte
-
-def add_phi_separators_and_phi60(ax, phi_sorted, tick_positions):
-    """Adiciona linhas verticais nos separadores de φ e uma faixa em φ=0.60."""
-    phi_max = max(phi_sorted) if phi_sorted else 1.0
-    
-    # linhas de separação em intervalos regulares
-    for phi_sep in np.arange(config.PLOT_PARAMS['phi_separators_start'], 
-                             min(config.PLOT_PARAMS['phi_separators_max'], phi_max) + 1e-12, 
-                             config.PLOT_PARAMS['phi_separators_step']):
-        if np.isclose(phi_sep, config.PLOT_PARAMS['phi_separators_max']):
-            continue
-        x_sep = np.interp(phi_sep, phi_sorted, tick_positions)
-        ax.axvline(x=x_sep, color="gray", linestyle="-", alpha=0.5, linewidth=1)
-    
-    # faixa em φ=0.60
-    if config.PLOT_PARAMS['phi_line_special'] <= phi_max:
-        x_phi60 = np.interp(config.PLOT_PARAMS['phi_line_special'], phi_sorted, tick_positions)
-        ax.axvspan(x_phi60 - 0.5, x_phi60 + 0.5,   # largura ajustável
-                   color="red", alpha=0.2,
-                   label=rf"$\phi = {config.PLOT_PARAMS['phi_line_special']:.2f}$")
-
 
 def main():
     """Função principal executável."""
@@ -381,7 +362,7 @@ def main():
     
     # Eixos
     ax.set_xticks(tick_positions)
-    ax.set_xticklabels([f"{phi:.1f}" for phi in phi_labels], rotation=0)
+    ax.set_xticklabels([f"{phi:.2f}" for phi in phi_labels], rotation=0)
     ax.tick_params(axis='x', which='both', length=0)
     ax.set_xlabel(r"$\phi$",fontsize=18)
     
@@ -408,7 +389,7 @@ def main():
     logger.info(f"Figura salva: {out_fig}")
     
     # Salvar os KDEs também
-    plot_kde_distribuicoes(dados_por_cenario, OUT_DIR)
+    #plot_kde_distribuicoes(dados_por_cenario, OUT_DIR)
     plt.show()
     logger.info("Análise concluída com sucesso!")
 

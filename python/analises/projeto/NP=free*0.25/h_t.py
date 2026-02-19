@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # -------------------------------
 # 0. Configurações Principais
 # -------------------------------
-SURVIVAL_DIR = Path("/home/rafael/Dados_Doc/Np=free*0.25/L_128/resultados_modelos/survival_analysis")
+SURVIVAL_DIR = Path("/home/rafael/Dados_Doc/Np=free*0.25/resultados_modelos/survival_analysis")
 
 # Frações de caçadores para processar
 FRACOES_C = ["Nc=Np*0.5", "Nc=Np*0.8", "Nc=Np"]
@@ -37,7 +37,7 @@ def calcular_H_de_S(arquivo_S, frac_c, obs_name):
         colunas_necessarias = ["step", "S(t)"]
         for col in colunas_necessarias:
             if col not in dados_S.columns:
-                print(f"  ❌ Coluna '{col}' não encontrada em {arquivo_S.name}")
+                print(f"   Coluna '{col}' não encontrada em {arquivo_S.name}")
                 print(f"  Colunas disponíveis: {list(dados_S.columns)}")
                 return None
         

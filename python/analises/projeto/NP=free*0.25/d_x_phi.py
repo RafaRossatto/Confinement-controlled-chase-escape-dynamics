@@ -11,8 +11,8 @@ from typing import List, Tuple, Dict, Optional
 from networkx.algorithms.shortest_paths.weighted import multi_source_dijkstra_path_length
 
 # ---------------------- parâmetros (iguais aos seus) ----------------------
-obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553",
-            "obs_8192","obs_9666", "obs_9830","obs_9994", "obs_11468", "obs_13107"]
+obs_list = ["obs_00", "obs_1638", "obs_3276", "obs_4915", "obs_6553","obs_8028",
+            "obs_8192","obs_8355","obs_9666", "obs_9830","obs_9994", "obs_11468", "obs_13107"]
 
 
 # --- Configuração global de fonte nos eixos e legenda ---
@@ -38,7 +38,8 @@ BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
 PHI_LINE = 0.60
 
 # Saídas
-OUT_DIR = BASE_ROOT / "resultados_modelos" / "dist_min"
+#OUT_DIR = BASE_ROOT / "resultados_modelos" / "dist_min"
+OUT_DIR = BASE_ROOT / "resultados_modelos" / "paper_response" /"dist_min"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Plotar ao final?

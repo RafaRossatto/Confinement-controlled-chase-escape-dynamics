@@ -7,7 +7,7 @@ from pathlib import Path
 
 # -------- Config --------
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
-FIT_DIR   = BASE_ROOT / "resultados_modelos" / "msd_fit"
+FIT_DIR   = BASE_ROOT / "resultados_modelos" / "paper_response"/ "msd_fit"
 
 # Lattice
 L = 128

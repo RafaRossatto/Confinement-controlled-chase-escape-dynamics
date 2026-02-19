@@ -8,8 +8,8 @@ from matplotlib import colormaps
 L = 128
 AREA = L**2
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
-HAZARD_DIR = BASE_ROOT /"L_128"/ "resultados_modelos" / "survival_analysis"
-OUT_DIR = BASE_ROOT /"L_128"/ "resultados_modelos" / "tau_x_phi"
+HAZARD_DIR = BASE_ROOT /"L_128"/ "resultados_modelos" /"paper_response"/ "survival_analysis"
+OUT_DIR = BASE_ROOT /"L_128"/ "resultados_modelos" /"paper_response"/ "tau_x_phi"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 bases = [
@@ -21,7 +21,7 @@ bases = [
 
 OBSTACULOS = [
     "s_obs_00", "s_obs_1638", "s_obs_3276",
-    "s_obs_4915", "s_obs_6553", "s_obs_8192",
+    "s_obs_4915", "s_obs_6553","s_obs_8028", "s_obs_8192", "s_obs_8355",
     "s_obs_9666","s_obs_9994","s_obs_9830", 
     "s_obs_11468", "s_obs_13107"
 ]

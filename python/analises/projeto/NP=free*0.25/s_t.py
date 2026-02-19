@@ -10,7 +10,7 @@ from pathlib import Path
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25" / "L_128"
 
 # Fração de caçadores (escolha uma)
-FRAC_C = "Nc=Np"
+FRAC_C = "Nc=Np*0.8"
 
 # -------- Lista de Obstáculos para Processar --------
 OBSTACULOS = [
@@ -19,7 +19,9 @@ OBSTACULOS = [
     "s_obs_3276",
     "s_obs_4915",
     "s_obs_6553",
+    "s_obs_8028",
     "s_obs_8192",
+    "s_obs_8355",
     "s_obs_9666",
     "s_obs_9830",
     "s_obs_9994",

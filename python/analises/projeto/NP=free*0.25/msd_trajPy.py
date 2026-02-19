@@ -19,7 +19,7 @@ Lx = Ly = 128
 min_traj_length = 5
 
 # Output
-OUT_DIR = BASE_ROOT / "resultados_modelos" / "msd_trajPy"
+OUT_DIR = BASE_ROOT / "resultados_modelos" / "paper_response"/"msd_trajPy"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Concentrations
@@ -28,7 +28,7 @@ CONCENTRACOES = ["Nc=Np"]#$, "Nc=Np*0.8", "Nc=Np"]
 # Obstacles
 OBSTACULOS = [
     "s_obs_00", "s_obs_1638", "s_obs_3276", "s_obs_4915",
-    "s_obs_6553", "s_obs_8192","s_obs_9666", "s_obs_9830", "s_obs_9994",
+    "s_obs_6553", "s_obs_8028","s_obs_8192","s_obs_8355","s_obs_9666", "s_obs_9830", "s_obs_9994",
     "s_obs_11468", "s_obs_13107"
 ]
 

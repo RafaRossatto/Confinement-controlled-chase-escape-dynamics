@@ -8,15 +8,15 @@ from scipy.stats import linregress
 
 # -------- Configurações --------
 BASE_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
-MSD_DIR   = BASE_ROOT / "resultados_modelos" / "msd_trajPy"
-OUT_DIR   = BASE_ROOT / "resultados_modelos" / "msd_fit"
+MSD_DIR   = BASE_ROOT / "resultados_modelos" / "paper_response"/"msd_trajPy"
+OUT_DIR   = BASE_ROOT / "resultados_modelos" / "paper_response"/ "msd_fit"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Concentrações e obstáculos
 CONCENTRACOES = ["Nc=Np*0.5", "Nc=Np*0.8", "Nc=Np"]
 OBSTACULOS = [
     "s_obs_00", "s_obs_1638", "s_obs_3276", "s_obs_4915",
-    "s_obs_6553", "s_obs_8192","s_obs_9666", "s_obs_9830","s_obs_9994",
+    "s_obs_6553","s_obs_8028", "s_obs_8192","s_obs_8355","s_obs_9666", "s_obs_9830","s_obs_9994",
     "s_obs_11468", "s_obs_13107"
 ]
 
@@ -30,7 +30,9 @@ FIT_WINDOWS = {
         "s_obs_3276": (1, 16),
         "s_obs_4915": (1, 18),
         "s_obs_6553": (1, 18),
+        "s_obs_8028": (1, 25),
         "s_obs_8192": (1, 22),
+        "s_obs_8355": (1, 25),
         "s_obs_9666": (1, 22),
         "s_obs_9830": (1, 22),
         "s_obs_9994": (1, 20),
@@ -44,7 +46,9 @@ FIT_WINDOWS = {
         "s_obs_3276": (1, 11),
         "s_obs_4915": (1, 12),
         "s_obs_6553": (1, 13),
+        "s_obs_8028": (1, 11),
         "s_obs_8192": (1, 15),
+        "s_obs_8355": (1, 13),
         "s_obs_9666": (1, 14),
         "s_obs_9830": (1, 14),
         "s_obs_9994": (1, 10),
@@ -58,7 +62,9 @@ FIT_WINDOWS = {
         "s_obs_3276": (1, 6),
         "s_obs_4915": (1, 8),
         "s_obs_6553": (1, 9),
+        "s_obs_8028": (1, 10),
         "s_obs_8192": (1, 8),
+        "s_obs_8355": (1, 10),
         "s_obs_9666": (1, 8),
         "s_obs_9830": (1, 10),
         "s_obs_9994": (1, 8),

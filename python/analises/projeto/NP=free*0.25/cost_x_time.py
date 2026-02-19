@@ -8,8 +8,8 @@ import re
 # -------------------------------
 # Configurações
 # -------------------------------
-DATA_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"
-OUT_DIR = DATA_ROOT / "resultados_modelos" / "cost_x_time"
+DATA_ROOT = Path.home() / "Dados_Doc" / "Np=free*0.25"/"L_128"
+OUT_DIR = DATA_ROOT /"resultados_modelos" /"paper_response"/ "cost_x_time"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # -------------------------------

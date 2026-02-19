@@ -25,7 +25,9 @@ OBS_LISTA = [
     "s_obs_3276",
     "s_obs_4915",
     "s_obs_6553",
+    "s_obs_8028",
     "s_obs_8192",
+    "s_obs_8355",
     "s_obs_9666",
     "s_obs_9830",
     "s_obs_9994",
@@ -35,7 +37,7 @@ OBS_LISTA = [
 # Exemplo: OBS_LISTA = ["s_obs_00", "s_obs_4915", "s_obs_9830", "s_obs_13107"]
 
 # Diretórios
-OUT_DIR = BASE_ROOT / "resultados_modelos" / "plot_s"
+OUT_DIR = BASE_ROOT / "resultados_modelos" /"paper_response" /"plot_s"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configuração de plotagem
@@ -168,7 +170,7 @@ def plotar_survival_para_todos_obs():
         # CONFIGURAR GRÁFICO 1: S(t)/S(0) normalizado
         ax1.set_xlabel('steps', fontsize=16)
         ax1.set_ylabel(r'$S(t)/S(0)$', fontsize=16)
-        ax1.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))  # 2 casas para S(t)/S(0)
+        #ax1.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))  # 2 casas para S(t)/S(0)
 
         ax1.set_title(f'{titulo_base}', fontsize=16)
         
