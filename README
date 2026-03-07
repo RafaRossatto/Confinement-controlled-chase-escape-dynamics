@@ -1,0 +1,14 @@
+Esse é o repositório para eu ter salvo os meu código relacionado ao trabalho que fizem. 
+Nesse momento não foi publicado, mas aqui está o arxiv:
+
+https://arxiv.org/abs/2601.06291
+
+No diretório c++:
+
+É onde está o código que gera as simulações:
+
+No diretório python, existem dois diretórios.
+Generate system:
+É onde é gerado o sistema, onde é definido o tamanho rede, como numero de obstaculos, chasers e escapers.
+Analises:
+Aqui é onde é feito o processamento e gereação dos gráficos que foram feitos.
